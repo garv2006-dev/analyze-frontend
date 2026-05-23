@@ -17,11 +17,14 @@ const api = axios.create({
  * @param {number} pageSize - the count of records per page
  * @param {number|null} limit - optional limit for backward compatibility
  */
-export async function getPredictions(page = 1, pageSize = 10, limit = null) {
+export async function getPredictions(page = 1, pageSize = 10, limit = null, symbol = null) {
   try {
-    const url = limit 
+    let url = limit 
       ? `/api/predictions?limit=${limit}` 
       : `/api/predictions?page=${page}&page_size=${pageSize}`;
+    if (symbol && symbol !== 'ALL') {
+      url += `&symbol=${symbol}`;
+    }
     const response = await api.get(url);
     return response.data;
   } catch (error) {
@@ -76,15 +79,20 @@ export async function chatWithAI(messages, predictionId = null) {
 /**
  * Manually trigger an on-demand browser screenshot capture and AI analysis cycle
  */
-export async function triggerAnalysis() {
+export async function triggerAnalysis(targetUrl = null, stockSymbol = null) {
   try {
-    const response = await api.post('/api/predictions/trigger');
+    const payload = {};
+    if (targetUrl) payload.target_url = targetUrl;
+    if (stockSymbol) payload.stock_symbol = stockSymbol;
+    
+    const response = await api.post('/api/predictions/trigger', payload);
     return response.data;
   } catch (error) {
     console.error('❌ Manual analysis trigger failed:', error.message);
     throw parseError(error);
   }
 }
+
 
 /**
  * Helper to extract meaningful user-facing messages from axios catches

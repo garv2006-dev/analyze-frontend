@@ -163,7 +163,7 @@ export default function LogList({
                     </div>
                     <div className="text-right">
                       <p className="text-[9px] text-slate-400 dark:text-slate-500 uppercase font-bold tracking-wider">Price</p>
-                      <p className="text-slate-800 dark:text-white font-bold">${parseFloat(currentPrice).toFixed(2)}</p>
+                      <p className="text-slate-800 dark:text-white font-bold">₹{parseFloat(currentPrice).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-[9px] text-slate-400 dark:text-slate-500 uppercase font-bold tracking-wider">Confidence</p>
@@ -251,16 +251,16 @@ export default function LogList({
                         <div>
                           <p className="text-[9px] text-slate-450 dark:text-slate-500 uppercase font-bold">Support floors</p>
                           {supportLevels.map((val, idx) => (
-                            <p key={idx} className="text-emerald-500 font-bold leading-tight">${parseFloat(val).toFixed(2)}</p>
+                            <p key={idx} className="text-emerald-500 font-bold leading-tight">₹{parseFloat(val).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                           ))}
-                          {supportLevels.length === 0 && <p className="text-emerald-500 font-bold">${(currentPrice * 0.985).toFixed(2)}</p>}
+                          {supportLevels.length === 0 && <p className="text-emerald-500 font-bold">₹{(currentPrice * 0.985).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>}
                         </div>
                         <div>
                           <p className="text-[9px] text-slate-450 dark:text-slate-500 uppercase font-bold">Resistance ceilings</p>
                           {resistanceLevels.map((val, idx) => (
-                            <p key={idx} className="text-rose-500 font-bold leading-tight">${parseFloat(val).toFixed(2)}</p>
+                            <p key={idx} className="text-rose-500 font-bold leading-tight">₹{parseFloat(val).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                           ))}
-                          {resistanceLevels.length === 0 && <p className="text-rose-500 font-bold">${(currentPrice * 1.015).toFixed(2)}</p>}
+                          {resistanceLevels.length === 0 && <p className="text-rose-500 font-bold">₹{(currentPrice * 1.015).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>}
                         </div>
                         <div>
                           <p className="text-[9px] text-slate-450 dark:text-slate-500 uppercase font-bold">RSI Momentum</p>

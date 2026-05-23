@@ -7,6 +7,12 @@ import LogList from './components/LogList';
 import ImagePreviewModal from './components/ImagePreviewModal';
 import ChatBot from './components/ChatBot';
 
+const DEFAULT_TARGETS = [
+  { symbol: 'NIFTY50', url: 'https://groww.in/charts/indices/nifty' },
+  { symbol: 'HDFC', url: 'https://groww.in/charts/ext/stocks/hdfc-bank' },
+  { symbol: 'JIO', url: 'https://groww.in/charts/ext/stocks/jio-financial-services' }
+];
+
 export default function App() {
   const [predictions, setPredictions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -14,6 +20,26 @@ export default function App() {
   const [error, setError] = useState(null);
   const [wsStatus, setWsStatus] = useState('CONNECTING'); // CONNECTING, CONNECTED, DISCONNECTED
   
+  // Custom asset trigger states
+  const [customUrl, setCustomUrl] = useState('');
+  const [customSymbol, setCustomSymbol] = useState('');
+  
+  // Saved targets list from local storage or defaults
+  const [targets, setTargets] = useState(() => {
+    const saved = localStorage.getItem('target_assets');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse target assets from localStorage:', e);
+      }
+    }
+    return DEFAULT_TARGETS;
+  });
+
+  // Workspace symbol filter state
+  const [selectedFilter, setSelectedFilter] = useState('ALL');
+
   // Theme state
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
 
@@ -38,10 +64,10 @@ export default function App() {
   }, [theme]);
 
   // Primary data fetcher
-  const loadData = async (showQuietly = false, page = currentPage) => {
+  const loadData = async (showQuietly = false, page = currentPage, symbol = selectedFilter) => {
     if (!showQuietly) setIsLoading(true);
     try {
-      const result = await getPredictions(page, pageSize);
+      const result = await getPredictions(page, pageSize, null, symbol);
       if (result.success) {
         const mappedData = result.data.map(item => ({
           ...item,
@@ -60,10 +86,10 @@ export default function App() {
     }
   };
 
-  // Fetch data on page change
+  // Fetch data on page change or filter change
   useEffect(() => {
-    loadData(false, currentPage);
-  }, [currentPage]);
+    loadData(false, currentPage, selectedFilter);
+  }, [currentPage, selectedFilter]);
 
   // WebSocket connection management for instant real-time broadcasts
   useEffect(() => {
@@ -91,7 +117,7 @@ export default function App() {
           if (payload.type === 'NEW_PREDICTION' && payload.data) {
             console.log('📡 Real-time broadcast received:', payload.data);
             // Refresh first page to load latest item and synchronize pagination offsets
-            loadData(true, 1);
+            loadData(true, 1, selectedFilter);
             setCurrentPage(1);
           }
         } catch (err) {
@@ -116,7 +142,7 @@ export default function App() {
     // Fallback Polling (Every 15 seconds)
     const interval = setInterval(() => {
       if (wsStatus !== 'CONNECTED') {
-        loadData(true, currentPage);
+        loadData(true, currentPage, selectedFilter);
       }
     }, 15000);
 
@@ -125,18 +151,55 @@ export default function App() {
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
       clearInterval(interval);
     };
-  }, [currentPage, wsStatus]);
+  }, [currentPage, wsStatus, selectedFilter]);
+
+  // Asset selection helper
+  const handleSelectAsset = (symbol) => {
+    setSelectedFilter(symbol);
+    setCurrentPage(1);
+    
+    // Auto-fill Custom Asset Console inputs if select option has matching configuration
+    if (symbol === 'ALL') {
+      setCustomSymbol('');
+      setCustomUrl('');
+    } else {
+      const match = targets.find(t => t.symbol.toUpperCase() === symbol.toUpperCase());
+      if (match) {
+        setCustomSymbol(match.symbol);
+        setCustomUrl(match.url);
+      }
+    }
+  };
 
   // Handle manual, on-demand capture trigger
-  const handleTriggerScan = async () => {
+  const handleTriggerScan = async (targetUrl = null, stockSymbol = null) => {
     if (isTriggering) return;
     setIsTriggering(true);
     setError(null);
     try {
-      const response = await triggerAnalysis();
+      const activeSymbol = stockSymbol || customSymbol || 'NIFTY50';
+      const activeUrl = targetUrl || customUrl || 'https://groww.in/charts/indices/nifty';
+      
+      const response = await triggerAnalysis(activeUrl, activeSymbol);
       if (response.success && response.data) {
+        // Parse and check if we should add it to saved dropdown options list
+        const exists = targets.some(t => t.symbol.toUpperCase() === activeSymbol.toUpperCase());
+        let updatedTargets = targets;
+        if (!exists) {
+          updatedTargets = [...targets, { symbol: activeSymbol.toUpperCase(), url: activeUrl }];
+          setTargets(updatedTargets);
+          localStorage.setItem('target_assets', JSON.stringify(updatedTargets));
+        }
+        
+        // Switch the selected workspace filter to this newly analyzed asset
+        setSelectedFilter(activeSymbol.toUpperCase());
+        
+        // Clear inputs after successful add
+        setCustomUrl('');
+        setCustomSymbol('');
+
         // Sync lists by loading page 1
-        loadData(false, 1);
+        loadData(false, 1, activeSymbol.toUpperCase());
         setCurrentPage(1);
       }
     } catch (err) {
@@ -158,7 +221,7 @@ export default function App() {
         const newTotalPages = Math.ceil(newTotalCount / pageSize) || 1;
         const targetPage = currentPage > newTotalPages ? newTotalPages : currentPage;
         
-        loadData(false, targetPage);
+        loadData(false, targetPage, selectedFilter);
         if (targetPage !== currentPage) {
           setCurrentPage(targetPage);
         }
@@ -174,12 +237,14 @@ export default function App() {
     setPreviewOpen(true);
   };
 
-  const latestPrediction = predictions[0] || null;
+  // Filter is now robustly handled by the backend pagination engine
+  const filteredPredictions = predictions;
+  const latestPrediction = filteredPredictions[0] || null;
 
   // Multi-timeline Forecast configuration helper
-  const getPredictionIntervals = () => {
-    if (!latestPrediction || !latestPrediction.prediction_json) return null;
-    const details = latestPrediction.prediction_json.predictions;
+  const getPredictionIntervals = (pred) => {
+    if (!pred || !pred.prediction_json) return null;
+    const details = pred.prediction_json.predictions;
     if (!details) return null;
 
     return [
@@ -190,7 +255,8 @@ export default function App() {
     ];
   };
 
-  const intervals = getPredictionIntervals();
+  const intervals = getPredictionIntervals(latestPrediction);
+
 
   return (
     <div className="min-h-screen relative pb-16 px-4 sm:px-6 lg:px-8 z-10 font-sans transition-colors duration-350 text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-[#070b13] overflow-x-hidden">
@@ -217,11 +283,28 @@ export default function App() {
           {/* Theme Toggle Switch */}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded-xl bg-slate-200/80 hover:bg-slate-300 dark:bg-slate-900/60 dark:hover:bg-slate-800 text-slate-650 dark:text-slate-300 border border-slate-350 dark:border-white/5 transition-all flex items-center justify-center shrink-0 shadow-sm"
+            className="p-2 rounded-xl bg-slate-200/80 hover:bg-slate-350 dark:bg-slate-900/60 dark:hover:bg-slate-800 text-slate-650 dark:text-slate-300 border border-slate-350 dark:border-white/5 transition-all flex items-center justify-center shrink-0 shadow-sm"
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
           >
             {theme === 'dark' ? <Sun className="h-4.5 w-4.5 text-amber-400" /> : <Moon className="h-4.5 w-4.5 text-indigo-600" />}
           </button>
+
+          {/* Target Asset Dropdown Switcher */}
+          <div className="relative shrink-0 select-none">
+            <select
+              value={selectedFilter}
+              onChange={(e) => handleSelectAsset(e.target.value)}
+              className="px-4 py-2 pr-8 rounded-xl bg-slate-200/80 hover:bg-slate-350 dark:bg-slate-900/60 dark:hover:bg-slate-800 text-slate-850 dark:text-slate-200 border border-slate-350 dark:border-white/5 transition-all text-xs font-bold font-sans appearance-none cursor-pointer focus:outline-none focus:border-cyanAccent shadow-sm"
+              style={{ backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23888888' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`, backgroundPosition: 'right 0.5rem center', backgroundSize: '1.25em 1.25em', backgroundRepeat: 'no-repeat' }}
+            >
+              <option value="ALL">📂 ALL WORKSPACES</option>
+              {targets.map((t) => (
+                <option key={t.symbol} value={t.symbol.toUpperCase()}>
+                  📊 {t.symbol.toUpperCase()}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* WebSocket status pill */}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-200/60 dark:bg-slate-900/60 border border-slate-350 dark:border-white/5 text-xs text-slate-650 dark:text-slate-350">
@@ -292,8 +375,82 @@ export default function App() {
           </div>
         ) : (
           <>
+            {/* On-Demand Custom Asset Scanner Console */}
+            <div className="glass-panel p-6 rounded-2xl border border-slate-200/50 dark:border-white/5 shadow-glass relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-cyanAccent/5 rounded-full filter blur-3xl pointer-events-none"></div>
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
+                <div className="space-y-1">
+                  <h2 className="text-base font-bold text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                    <Globe className="h-4.5 w-4.5 text-cyanAccent animate-pulse" /> Custom Asset Capture & Analysis Console
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    Enter any dynamic stock/index chart URL (e.g. from Groww) and symbol to execute a dynamic Playwright capture and GPT-4o Vision run.
+                  </p>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto shrink-0 items-stretch sm:items-center">
+                  {/* Quick Select Saved Asset */}
+                  <div className="relative shrink-0">
+                    <select
+                      value={selectedFilter}
+                      onChange={(e) => handleSelectAsset(e.target.value)}
+                      className="w-full sm:w-56 px-3 py-2 pr-8 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-350 dark:border-white/10 focus:outline-none focus:border-cyanAccent transition-all text-xs font-bold font-sans appearance-none cursor-pointer text-slate-850 dark:text-slate-200"
+                      style={{ backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23888888' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`, backgroundPosition: 'right 0.5rem center', backgroundSize: '1.25em 1.25em', backgroundRepeat: 'no-repeat' }}
+                    >
+                      <option value="ALL">📂 Quick Select Saved Asset...</option>
+                      {targets.map((t) => (
+                        <option key={t.symbol} value={t.symbol.toUpperCase()}>
+                          📊 {t.symbol.toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Symbol input */}
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      placeholder="Symbol (e.g. RELIANCE)" 
+                      value={customSymbol}
+                      onChange={(e) => setCustomSymbol(e.target.value.toUpperCase())}
+                      className="w-full sm:w-44 px-3.5 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-350 dark:border-white/10 focus:outline-none focus:border-cyanAccent transition-all text-slate-850 dark:text-white font-mono uppercase font-bold"
+                    />
+                  </div>
+                  {/* URL input */}
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      placeholder="Target Chart URL" 
+                      value={customUrl}
+                      onChange={(e) => setCustomUrl(e.target.value)}
+                      className="w-full sm:w-80 px-3.5 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-350 dark:border-white/10 focus:outline-none focus:border-cyanAccent transition-all text-slate-850 dark:text-white font-mono"
+                    />
+                  </div>
+                  {/* Action Trigger Button */}
+                  <button
+                    onClick={() => handleTriggerScan(customUrl, customSymbol)}
+                    disabled={isTriggering || !customUrl.trim()}
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyanAccent to-blue-600 hover:from-cyanAccent/95 hover:to-blue-500 disabled:opacity-40 disabled:pointer-events-none text-white font-bold text-xs transition-all hover:scale-[1.02] shadow-cyan-glow flex items-center justify-center gap-1.5 shrink-0"
+                  >
+                    {isTriggering ? (
+                      <>
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                        <span>Analyzing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-3.5 w-3.5 fill-current animate-pulse" />
+                        <span>Analyze Asset</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* 1. Metric Cards Grid */}
             <MetricCard prediction={latestPrediction} />
+
 
             {/* 2. Detailed Predictions & Timeline Analytics Panel (User request: "more ditels of pridiction") */}
             {latestPrediction && (
@@ -410,12 +567,40 @@ export default function App() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* 3. Visualizations (2 columns on lg) */}
               <div className="lg:col-span-2 space-y-8">
-                <ChartSection history={predictions} />
+                {/* Asset Switcher Workspaces */}
+                <div className="flex flex-wrap items-center gap-2 pb-1.5 border-b border-slate-200 dark:border-white/5">
+                  <button
+                    onClick={() => handleSelectAsset('ALL')}
+                    className={`px-4 py-1.5 rounded-full text-xs font-bold font-sans transition-all duration-200 border ${
+                      selectedFilter === 'ALL'
+                        ? 'bg-cyanAccent/10 text-cyanAccent border-cyanAccent/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] scale-[1.02]'
+                        : 'bg-slate-200/50 hover:bg-slate-200 border-slate-350 dark:bg-slate-900/60 dark:hover:bg-slate-800 text-slate-650 dark:text-slate-400 border-transparent'
+                    }`}
+                  >
+                    📂 All Workspace Assets
+                  </button>
+                  {targets.map((t) => (
+                    <button
+                      key={t.symbol}
+                      onClick={() => handleSelectAsset(t.symbol.toUpperCase())}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold font-sans transition-all duration-200 border ${
+                        selectedFilter === t.symbol.toUpperCase()
+                          ? 'bg-cyanAccent/10 text-cyanAccent border-cyanAccent/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] scale-[1.02]'
+                          : 'bg-slate-200/50 hover:bg-slate-200 border-slate-350 dark:bg-slate-900/60 dark:hover:bg-slate-800 text-slate-650 dark:text-slate-400 border-transparent'
+                      }`}
+                    >
+                      📊 {t.symbol.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+
+                <ChartSection history={filteredPredictions} />
                 
                 {/* 4. Prediction logs archive with full pagination & delete hooks */}
                 <LogList 
-                  predictions={predictions} 
+                  predictions={filteredPredictions} 
                   onPreviewImage={openPreview}
+
                   currentPage={currentPage}
                   totalPages={totalPages}
                   onPageChange={setCurrentPage}

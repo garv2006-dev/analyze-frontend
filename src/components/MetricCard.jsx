@@ -94,7 +94,7 @@ export default function MetricCard({ prediction }) {
           <div>
             <p className="text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-wider font-bold">Extracted Index Price</p>
             <h3 className="text-2xl font-bold mt-2 text-slate-900 dark:text-white font-mono tracking-tight">
-              ${currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ₹{currentPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
               <Zap className="h-3 w-3 text-cyanAccent animate-pulse" /> Analyzed Live Value
@@ -141,16 +141,16 @@ export default function MetricCard({ prediction }) {
               <div className="flex flex-col">
                 <span className="text-[9px] text-slate-400 dark:text-slate-500 uppercase font-bold">Support floors</span>
                 {supportLevels.map((val, idx) => (
-                  <span key={idx} className="text-emerald-500 font-bold">${val.toLocaleString()}</span>
+                  <span key={idx} className="text-emerald-500 font-bold">₹{val.toLocaleString('en-IN')}</span>
                 ))}
-                {supportLevels.length === 0 && <span className="text-emerald-500 font-bold">${currentPrice * 0.98}</span>}
+                {supportLevels.length === 0 && <span className="text-emerald-500 font-bold">₹{(currentPrice * 0.98).toLocaleString('en-IN')}</span>}
               </div>
               <div className="flex flex-col">
                 <span className="text-[9px] text-slate-400 dark:text-slate-500 uppercase font-bold">Resistance ceilings</span>
                 {resistanceLevels.map((val, idx) => (
-                  <span key={idx} className="text-rose-500 font-bold">${val.toLocaleString()}</span>
+                  <span key={idx} className="text-rose-500 font-bold">₹{val.toLocaleString('en-IN')}</span>
                 ))}
-                {resistanceLevels.length === 0 && <span className="text-rose-500 font-bold">${currentPrice * 1.02}</span>}
+                {resistanceLevels.length === 0 && <span className="text-rose-500 font-bold">₹{(currentPrice * 1.02).toLocaleString('en-IN')}</span>}
               </div>
             </div>
           </div>

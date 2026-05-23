@@ -80,7 +80,7 @@ export default function ChartSection({ history }) {
         <div className="glass-panel p-4 rounded-xl border border-white/10 text-xs shadow-2xl font-sans">
           <p className="text-slate-400 font-semibold mb-2">{label}</p>
           <p className="text-cyanAccent font-mono mb-1">
-            Index Value: <span className="font-bold text-white">${floatVal(payload[0].value).toFixed(2)}</span>
+            Index Value: <span className="font-bold text-white">₹{floatVal(payload[0].value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </p>
           <p className="text-purpleAccent font-mono">
             AI Confidence: <span className="font-bold text-white">{intVal(payload[1].value)}%</span>
@@ -160,7 +160,7 @@ export default function ChartSection({ history }) {
               fontSize={10}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(v) => `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+              tickFormatter={(v) => `₹${v.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
             />
             <YAxis 
               yAxisId="right"
@@ -185,7 +185,7 @@ export default function ChartSection({ history }) {
                 strokeWidth={1}
                 strokeDasharray="4 4"
                 label={{ 
-                  value: `S${idx + 1}: $${val.toLocaleString()}`, 
+                  value: `S${idx + 1}: ₹${val.toLocaleString('en-IN')}`, 
                   position: 'insideBottomRight', 
                   fill: '#10b981', 
                   fontSize: 9,
@@ -204,7 +204,7 @@ export default function ChartSection({ history }) {
                 strokeWidth={1}
                 strokeDasharray="4 4"
                 label={{ 
-                  value: `R${idx + 1}: $${val.toLocaleString()}`, 
+                  value: `R${idx + 1}: ₹${val.toLocaleString('en-IN')}`, 
                   position: 'insideTopRight', 
                   fill: '#ef4444', 
                   fontSize: 9,
