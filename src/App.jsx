@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, RefreshCw, Layers, Globe, Radio, ShieldCheck, AlertCircle, TrendingUp, TrendingDown, Clock, Activity, Zap, Sun, Moon, Sparkles } from 'lucide-react';
 import { getPredictions, triggerAnalysis, deletePrediction } from './services/api';
 import MetricCard from './components/MetricCard';
@@ -53,6 +53,18 @@ export default function App() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
 
+  // Keep refs of latest states to avoid closing/opening WebSocket connections
+  const selectedFilterRef = useRef(selectedFilter);
+  const currentPageRef = useRef(currentPage);
+
+  useEffect(() => {
+    selectedFilterRef.current = selectedFilter;
+  }, [selectedFilter]);
+
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+
   // Apply theme class
   useEffect(() => {
     if (theme === 'dark') {
@@ -64,7 +76,7 @@ export default function App() {
   }, [theme]);
 
   // Primary data fetcher
-  const loadData = async (showQuietly = false, page = currentPage, symbol = selectedFilter) => {
+  const loadData = useCallback(async (showQuietly = false, page = currentPage, symbol = selectedFilter) => {
     if (!showQuietly) setIsLoading(true);
     try {
       const result = await getPredictions(page, pageSize, null, symbol);
@@ -77,6 +89,8 @@ export default function App() {
         setTotalPages(Math.ceil(result.total / pageSize) || 1);
         setTotalCount(result.total || 0);
         setError(null);
+      } else {
+        throw new Error(result.error || result.message || 'Failed to fetch predictions from server.');
       }
     } catch (err) {
       console.error(err);
@@ -84,19 +98,21 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [pageSize]);
 
   // Fetch data on page change or filter change
   useEffect(() => {
     loadData(false, currentPage, selectedFilter);
-  }, [currentPage, selectedFilter]);
+  }, [currentPage, selectedFilter, loadData]);
 
   // WebSocket connection management for instant real-time broadcasts
   useEffect(() => {
     let socket = null;
     let reconnectTimeout = null;
+    let isMounted = true;
 
     const connectWS = () => {
+      if (!isMounted) return;
       setWsStatus('CONNECTING');
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = window.location.hostname === 'localhost' ? 'localhost:5000' : window.location.host;
@@ -106,18 +122,23 @@ export default function App() {
       socket = new WebSocket(wsUrl);
 
       socket.onopen = () => {
+        if (!isMounted) {
+          socket.close();
+          return;
+        }
         console.log('✔️ WebSocket connected.');
         setWsStatus('CONNECTED');
         setError(null);
       };
 
       socket.onmessage = (event) => {
+        if (!isMounted) return;
         try {
           const payload = JSON.parse(event.data);
           if (payload.type === 'NEW_PREDICTION' && payload.data) {
             console.log('📡 Real-time broadcast received:', payload.data);
             // Refresh first page to load latest item and synchronize pagination offsets
-            loadData(true, 1, selectedFilter);
+            loadData(true, 1, selectedFilterRef.current);
             setCurrentPage(1);
           }
         } catch (err) {
@@ -126,6 +147,7 @@ export default function App() {
       };
 
       socket.onclose = () => {
+        if (!isMounted) return;
         console.warn('❌ WebSocket connection closed. Attempting reconnect...');
         setWsStatus('DISCONNECTED');
         reconnectTimeout = setTimeout(connectWS, 5000);
@@ -141,17 +163,18 @@ export default function App() {
 
     // Fallback Polling (Every 15 seconds)
     const interval = setInterval(() => {
-      if (wsStatus !== 'CONNECTED') {
-        loadData(true, currentPage, selectedFilter);
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        loadData(true, currentPageRef.current, selectedFilterRef.current);
       }
     }, 15000);
 
     return () => {
+      isMounted = false;
       if (socket) socket.close();
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
       clearInterval(interval);
     };
-  }, [currentPage, wsStatus, selectedFilter]);
+  }, [loadData]);
 
   // Asset selection helper
   const handleSelectAsset = (symbol) => {
