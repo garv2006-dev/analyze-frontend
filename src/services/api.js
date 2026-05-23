@@ -12,12 +12,17 @@ const api = axios.create({
 });
 
 /**
- * Fetch predictions from backend
- * @param {number} limit - maximum logs to retrieve
+ * Fetch predictions from backend supporting paginated results
+ * @param {number} page - the page number to fetch
+ * @param {number} pageSize - the count of records per page
+ * @param {number|null} limit - optional limit for backward compatibility
  */
-export async function getPredictions(limit = 50) {
+export async function getPredictions(page = 1, pageSize = 10, limit = null) {
   try {
-    const response = await api.get(`/api/predictions?limit=${limit}`);
+    const url = limit 
+      ? `/api/predictions?limit=${limit}` 
+      : `/api/predictions?page=${page}&page_size=${pageSize}`;
+    const response = await api.get(url);
     return response.data;
   } catch (error) {
     console.error('❌ Failed fetching predictions:', error.message);
@@ -35,6 +40,35 @@ export async function getPredictionById(id) {
     return response.data;
   } catch (error) {
     console.error(`❌ Failed fetching prediction detail for ID ${id}:`, error.message);
+    throw parseError(error);
+  }
+}
+
+/**
+ * Delete a prediction record by its primary key
+ * @param {number|string} id - prediction ID
+ */
+export async function deletePrediction(id) {
+  try {
+    const response = await api.delete(`/api/predictions/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error(`❌ Failed deleting prediction ID ${id}:`, error.message);
+    throw parseError(error);
+  }
+}
+
+/**
+ * Send messages to the AI assistant agent, incorporating latest chart parameters
+ * @param {Array} messages - conversation history [{role, content}]
+ * @param {number|null} predictionId - optional prediction ID to focus on
+ */
+export async function chatWithAI(messages, predictionId = null) {
+  try {
+    const response = await api.post('/api/chat', { messages, prediction_id: predictionId });
+    return response.data;
+  } catch (error) {
+    console.error('❌ AI Chat failed:', error.message);
     throw parseError(error);
   }
 }
@@ -58,7 +92,12 @@ export async function triggerAnalysis() {
 function parseError(error) {
   if (error.response) {
     // Server responded with non-2xx status
-    return new Error(error.response.data?.error || error.response.data?.message || 'Server error occurred');
+    return new Error(
+      error.response.data?.error || 
+      error.response.data?.message || 
+      error.response.data?.detail || 
+      'Server error occurred'
+    );
   } else if (error.request) {
     // Request was made but no response received
     return new Error('No response received from the automation server. Make sure the backend service is running.');

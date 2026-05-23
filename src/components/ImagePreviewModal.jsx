@@ -34,7 +34,7 @@ export default function ImagePreviewModal({ isOpen, imageUrl, onClose }) {
         <div className="absolute top-0 inset-x-0 p-4 bg-gradient-to-b from-black/80 to-transparent flex justify-between items-center z-10">
           <div className="flex items-center gap-2">
             <span className="p-1 rounded bg-cyanAccent/20 border border-cyanAccent/30 text-cyanAccent text-[10px] uppercase font-bold tracking-wider">Live Screenshot</span>
-            <span className="text-xs text-slate-300 truncate max-w-xs">{imageUrl.replace('/screenshots/', '')}</span>
+            <span className="text-xs text-slate-300 truncate max-w-xs">{(imageUrl || '').replace('/screenshots/', '')}</span>
           </div>
           <button 
             className="p-1.5 rounded-lg bg-black/60 hover:bg-black/80 text-slate-300 hover:text-white transition-colors border border-white/10"
