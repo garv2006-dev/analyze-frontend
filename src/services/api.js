@@ -114,3 +114,32 @@ function parseError(error) {
     return new Error(error.message || 'API client network request failure');
   }
 }
+
+/**
+ * Retrieve the background scheduler's active capture interval in minutes
+ */
+export async function getSchedulerSettings() {
+  try {
+    const response = await api.get('/api/predictions/scheduler-settings');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Failed fetching scheduler settings:', error.message);
+    throw parseError(error);
+  }
+}
+
+/**
+ * Update the background scheduler's active capture interval dynamically
+ * @param {number} intervalMinutes - the new interval in minutes
+ */
+export async function updateSchedulerSettings(intervalMinutes) {
+  try {
+    const response = await api.post('/api/predictions/scheduler-settings', {
+      interval_minutes: Number(intervalMinutes)
+    });
+    return response.data;
+  } catch (error) {
+    console.error('❌ Failed updating scheduler settings:', error.message);
+    throw parseError(error);
+  }
+}

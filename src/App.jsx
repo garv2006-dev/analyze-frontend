@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, RefreshCw, Layers, Globe, Radio, ShieldCheck, AlertCircle, TrendingUp, TrendingDown, Clock, Activity, Zap, Sun, Moon, Sparkles } from 'lucide-react';
-import { getPredictions, triggerAnalysis, deletePrediction } from './services/api';
+import { getPredictions, triggerAnalysis, deletePrediction, getSchedulerSettings, updateSchedulerSettings } from './services/api';
 import MetricCard from './components/MetricCard';
 import ChartSection from './components/ChartSection';
 import LogList from './components/LogList';
 import ImagePreviewModal from './components/ImagePreviewModal';
 import ChatBot from './components/ChatBot';
+import AssetDropdown from './components/AssetDropdown';
 
 const DEFAULT_TARGETS = [
   { symbol: 'NIFTY50', url: 'https://groww.in/charts/indices/nifty' },
@@ -23,6 +24,12 @@ export default function App() {
   // Custom asset trigger states
   const [customUrl, setCustomUrl] = useState('');
   const [customSymbol, setCustomSymbol] = useState('');
+  
+  // Background automated scheduler states
+  const [schedulerInterval, setSchedulerInterval] = useState(5);
+  const [customIntervalInput, setCustomIntervalInput] = useState('');
+  const [isUpdatingInterval, setIsUpdatingInterval] = useState(false);
+  const [intervalFeedback, setIntervalFeedback] = useState('');
   
   // Saved targets list from local storage or defaults
   const [targets, setTargets] = useState(() => {
@@ -74,6 +81,48 @@ export default function App() {
     }
     localStorage.setItem('theme', theme);
   }, [theme]);
+
+  // Load scheduler settings on bootstrap
+  useEffect(() => {
+    const fetchSchedulerSettings = async () => {
+      try {
+        const response = await getSchedulerSettings();
+        if (response.success) {
+          setSchedulerInterval(response.interval_minutes);
+          setCustomIntervalInput(response.interval_minutes.toString());
+        }
+      } catch (err) {
+        console.error('Failed to load background scheduler settings:', err);
+      }
+    };
+    fetchSchedulerSettings();
+  }, []);
+
+  // Update background scheduler interval dynamically
+  const handleUpdateInterval = async () => {
+    const mins = parseInt(customIntervalInput, 10);
+    if (isNaN(mins) || mins < 1) {
+      setError('Please enter a valid interval of at least 1 minute.');
+      return;
+    }
+    
+    setIsUpdatingInterval(true);
+    setError(null);
+    setIntervalFeedback('');
+    try {
+      const response = await updateSchedulerSettings(mins);
+      if (response.success) {
+        setSchedulerInterval(response.interval_minutes);
+        setIntervalFeedback(`Interval set to ${response.interval_minutes}m successfully!`);
+        setTimeout(() => setIntervalFeedback(''), 4000);
+      }
+    } catch (err) {
+      console.error(err);
+      setError(`Failed to update background scheduler interval: ${err.message}`);
+    } finally {
+      setIsUpdatingInterval(false);
+    }
+  };
 
   // Primary data fetcher
   const loadData = useCallback(async (showQuietly = false, page = currentPage, symbol = selectedFilter) => {
@@ -233,6 +282,19 @@ export default function App() {
     }
   };
 
+  // Handle delete target asset from saved dropdown targets
+  const handleDeleteTarget = (symbolToDelete) => {
+    const updatedTargets = targets.filter(t => t.symbol.toUpperCase() !== symbolToDelete.toUpperCase());
+    setTargets(updatedTargets);
+    localStorage.setItem('target_assets', JSON.stringify(updatedTargets));
+    
+    // If the currently selected workspace is the deleted one, switch back to ALL
+    if (selectedFilter.toUpperCase() === symbolToDelete.toUpperCase()) {
+      setSelectedFilter('ALL');
+      setCurrentPage(1);
+    }
+  };
+
   // Handle row deletion
   const handleDeletePrediction = async (id) => {
     setError(null);
@@ -313,21 +375,12 @@ export default function App() {
           </button>
 
           {/* Target Asset Dropdown Switcher */}
-          <div className="relative shrink-0 select-none">
-            <select
-              value={selectedFilter}
-              onChange={(e) => handleSelectAsset(e.target.value)}
-              className="px-4 py-2 pr-8 rounded-xl bg-slate-200/80 hover:bg-slate-350 dark:bg-slate-900/60 dark:hover:bg-slate-800 text-slate-850 dark:text-slate-200 border border-slate-350 dark:border-white/5 transition-all text-xs font-bold font-sans appearance-none cursor-pointer focus:outline-none focus:border-cyanAccent shadow-sm"
-              style={{ backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23888888' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`, backgroundPosition: 'right 0.5rem center', backgroundSize: '1.25em 1.25em', backgroundRepeat: 'no-repeat' }}
-            >
-              <option value="ALL">📂 ALL WORKSPACES</option>
-              {targets.map((t) => (
-                <option key={t.symbol} value={t.symbol.toUpperCase()}>
-                  📊 {t.symbol.toUpperCase()}
-                </option>
-              ))}
-            </select>
-          </div>
+          <AssetDropdown
+            value={selectedFilter}
+            onChange={handleSelectAsset}
+            targets={targets}
+            onDeleteTarget={handleDeleteTarget}
+          />
 
           {/* WebSocket status pill */}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-200/60 dark:bg-slate-900/60 border border-slate-350 dark:border-white/5 text-xs text-slate-650 dark:text-slate-350">
@@ -345,9 +398,9 @@ export default function App() {
           </div>
 
           {/* Cron frequency indicator */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-200/60 dark:bg-slate-900/60 border border-slate-350 dark:border-white/5 text-xs text-slate-500 dark:text-slate-400 font-medium">
-            <Clock className="h-3.5 w-3.5" />
-            <span>APScheduler: Active (5m)</span>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-200/60 dark:bg-slate-900/60 border border-slate-350 dark:border-white/5 text-xs text-slate-500 dark:text-slate-400 font-medium animate-pulse-slow">
+            <Clock className="h-3.5 w-3.5 text-cyanAccent" />
+            <span>APScheduler: Active ({schedulerInterval}m)</span>
           </div>
 
           {/* Trigger Scan Button */}
@@ -399,7 +452,7 @@ export default function App() {
         ) : (
           <>
             {/* On-Demand Custom Asset Scanner Console */}
-            <div className="glass-panel p-6 rounded-2xl border border-slate-200/50 dark:border-white/5 shadow-glass relative overflow-hidden">
+            <div className="glass-panel p-6 rounded-2xl border border-slate-200/50 dark:border-white/5 shadow-glass relative z-30">
               <div className="absolute top-0 right-0 w-64 h-64 bg-cyanAccent/5 rounded-full filter blur-3xl pointer-events-none"></div>
               <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
                 <div className="space-y-1">
@@ -413,21 +466,14 @@ export default function App() {
                 
                 <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto shrink-0 items-stretch sm:items-center">
                   {/* Quick Select Saved Asset */}
-                  <div className="relative shrink-0">
-                    <select
-                      value={selectedFilter}
-                      onChange={(e) => handleSelectAsset(e.target.value)}
-                      className="w-full sm:w-56 px-3 py-2 pr-8 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-350 dark:border-white/10 focus:outline-none focus:border-cyanAccent transition-all text-xs font-bold font-sans appearance-none cursor-pointer text-slate-850 dark:text-slate-200"
-                      style={{ backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23888888' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`, backgroundPosition: 'right 0.5rem center', backgroundSize: '1.25em 1.25em', backgroundRepeat: 'no-repeat' }}
-                    >
-                      <option value="ALL">📂 Quick Select Saved Asset...</option>
-                      {targets.map((t) => (
-                        <option key={t.symbol} value={t.symbol.toUpperCase()}>
-                          📊 {t.symbol.toUpperCase()}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <AssetDropdown
+                    value={selectedFilter}
+                    onChange={handleSelectAsset}
+                    targets={targets}
+                    onDeleteTarget={handleDeleteTarget}
+                    placeholder="Quick Select Saved Asset..."
+                    isConsole={true}
+                  />
 
                   {/* Symbol input */}
                   <div className="relative">
@@ -467,6 +513,64 @@ export default function App() {
                       </>
                     )}
                   </button>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="my-4 border-t border-slate-250 dark:border-white/5"></div>
+              
+              {/* Automated Scheduler Settings Control */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10 text-xs">
+                <div className="space-y-0.5">
+                  <p className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 uppercase tracking-wide">
+                    <Clock className="h-4 w-4 text-purpleAccent animate-pulse" /> Automated Capturing Scheduler Configuration
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                    Active automated analysis frequency: <span className="font-mono text-cyanAccent font-bold">{schedulerInterval} minutes</span>. Adjust the background capturing interval dynamically below.
+                  </p>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto shrink-0">
+                  <div className="relative flex items-center">
+                    <input 
+                      type="text" 
+                      inputMode="numeric"
+                      placeholder="10" 
+                      value={customIntervalInput}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^\d*$/.test(val)) {
+                          setCustomIntervalInput(val);
+                        }
+                      }}
+                      className="w-full sm:w-28 px-3.5 py-1.5 pr-10 text-xs rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-350 dark:border-white/10 focus:outline-none focus:border-cyanAccent transition-all text-slate-850 dark:text-white font-mono font-bold"
+                    />
+                    <span className="absolute right-3 text-[10px] text-slate-400 dark:text-slate-500 font-bold font-sans select-none">min</span>
+                  </div>
+                  
+                  <button
+                    onClick={handleUpdateInterval}
+                    disabled={isUpdatingInterval || !customIntervalInput.trim()}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-purpleAccent to-indigo-650 hover:from-purpleAccent/95 hover:to-indigo-550 disabled:opacity-40 disabled:pointer-events-none text-white font-bold text-xs transition-all hover:scale-[1.02] shadow-purple-glow flex items-center justify-center gap-1.5 shrink-0"
+                  >
+                    {isUpdatingInterval ? (
+                      <>
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                        <span>Updating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        <span>Update Interval</span>
+                      </>
+                    )}
+                  </button>
+                  
+                  {intervalFeedback && (
+                    <span className="text-[11px] text-emerald-500 dark:text-emerald-450 font-extrabold animate-pulse ml-2 tracking-wide">
+                      {intervalFeedback}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

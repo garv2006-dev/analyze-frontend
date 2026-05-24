@@ -244,41 +244,88 @@ export default function LogList({
                       </div>
                     </div>
 
-                    {/* Column 2: Extracted variables */}
-                    <div className="space-y-2">
-                      <h4 className="text-[10px] uppercase text-purpleAccent font-extrabold tracking-wider">Technical Indicators</h4>
-                      <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-xs font-mono text-slate-600 dark:text-slate-300">
-                        <div>
-                          <p className="text-[9px] text-slate-450 dark:text-slate-500 uppercase font-bold">Support floors</p>
-                          {supportLevels.map((val, idx) => (
-                            <p key={idx} className="text-emerald-500 font-bold leading-tight">₹{parseFloat(val).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                          ))}
-                          {supportLevels.length === 0 && <p className="text-emerald-500 font-bold">₹{(currentPrice * 0.985).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>}
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-slate-450 dark:text-slate-500 uppercase font-bold">Resistance ceilings</p>
-                          {resistanceLevels.map((val, idx) => (
-                            <p key={idx} className="text-rose-500 font-bold leading-tight">₹{parseFloat(val).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                          ))}
-                          {resistanceLevels.length === 0 && <p className="text-rose-500 font-bold">₹{(currentPrice * 1.015).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>}
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-slate-450 dark:text-slate-500 uppercase font-bold">RSI Momentum</p>
-                          <p className="text-slate-800 dark:text-white font-bold">{rsi}</p>
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-slate-450 dark:text-slate-500 uppercase font-bold">MACD Crossover</p>
-                          <p className="text-slate-800 dark:text-white font-bold truncate uppercase">{macd}</p>
+                    {/* Column 2: Extracted variables & Trade Setup */}
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-[10px] uppercase text-purpleAccent font-extrabold tracking-wider mb-2">Technical Indicators</h4>
+                        <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-xs font-mono text-slate-600 dark:text-slate-350">
+                          <div>
+                            <p className="text-[9px] text-slate-450 dark:text-slate-500 uppercase font-bold">Support floors</p>
+                            {supportLevels.map((val, idx) => (
+                              <p key={idx} className="text-emerald-500 font-bold leading-tight">₹{parseFloat(val).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                            ))}
+                            {supportLevels.length === 0 && <p className="text-emerald-500 font-bold">₹{(currentPrice * 0.985).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>}
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-slate-450 dark:text-slate-500 uppercase font-bold">Resistance ceilings</p>
+                            {resistanceLevels.map((val, idx) => (
+                              <p key={idx} className="text-rose-500 font-bold leading-tight">₹{parseFloat(val).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                            ))}
+                            {resistanceLevels.length === 0 && <p className="text-rose-500 font-bold">₹{(currentPrice * 1.015).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>}
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-slate-450 dark:text-slate-500 uppercase font-bold">RSI Momentum</p>
+                            <p className="text-slate-800 dark:text-white font-bold">{rsi}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-slate-450 dark:text-slate-500 uppercase font-bold">MACD Crossover</p>
+                            <p className="text-slate-800 dark:text-white font-bold truncate uppercase">{macd}</p>
+                          </div>
                         </div>
                       </div>
+
+                      {predictionJson.trade_setup && (predictionJson.trade_setup.entry_price || predictionJson.trade_setup.stop_loss || predictionJson.trade_setup.target_price) && (
+                        <div className="pt-3 border-t border-slate-200/40 dark:border-white/5">
+                          <h4 className="text-[10px] uppercase text-cyanAccent font-extrabold tracking-wider mb-2">AI Trade Setup</h4>
+                          <div className="grid grid-cols-3 gap-1 text-[11px] font-mono text-slate-650 dark:text-slate-300">
+                            <div className="bg-cyanAccent/5 dark:bg-cyanAccent/[0.03] p-1.5 rounded-lg border border-cyanAccent/10 text-center">
+                              <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase font-bold block">Entry</span>
+                              <span className="text-cyanAccent font-bold">₹{parseFloat(predictionJson.trade_setup.entry_price || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="bg-rose-500/5 dark:bg-rose-500/[0.03] p-1.5 rounded-lg border border-rose-500/10 text-center">
+                              <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase font-bold block">Stop Loss</span>
+                              <span className="text-rose-400 font-bold">₹{parseFloat(predictionJson.trade_setup.stop_loss || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="bg-emerald-500/5 dark:bg-emerald-500/[0.03] p-1.5 rounded-lg border border-emerald-500/10 text-center">
+                              <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase font-bold block">Target</span>
+                              <span className="text-emerald-400 font-bold">₹{parseFloat(predictionJson.trade_setup.target_price || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Column 3: AI Reasoning */}
-                    <div className="space-y-2">
-                      <h4 className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">AI Reasoning Summary</h4>
-                      <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-xs font-sans">
-                        {item.ai_summary}
-                      </p>
+                    {/* Column 3: AI Reasoning & Step-by-Step Visual Audit */}
+                    <div className="space-y-3">
+                      <h4 className="text-[10px] uppercase text-slate-550 dark:text-slate-400 font-extrabold tracking-wider">AI Reasoning & Visual Audit</h4>
+                      <div className="space-y-2.5 text-xs">
+                        <p className="text-slate-600 dark:text-slate-300 leading-relaxed font-sans">
+                          {item.ai_summary}
+                        </p>
+                        
+                        {predictionJson.technical_analysis && (
+                          <div className="pt-2.5 border-t border-slate-200/40 dark:border-white/5 space-y-2 text-[11px] font-sans">
+                            {predictionJson.technical_analysis.price_action_observations && (
+                              <div>
+                                <span className="text-[9px] uppercase font-bold text-cyanAccent tracking-wider block">Price Action Analysis</span>
+                                <p className="text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{predictionJson.technical_analysis.price_action_observations}</p>
+                              </div>
+                            )}
+                            {predictionJson.technical_analysis.support_resistance_rationale && (
+                              <div>
+                                <span className="text-[9px] uppercase font-bold text-emerald-500 tracking-wider block">S/R Zones Justification</span>
+                                <p className="text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{predictionJson.technical_analysis.support_resistance_rationale}</p>
+                              </div>
+                            )}
+                            {predictionJson.technical_analysis.indicators_rationale && (
+                              <div>
+                                <span className="text-[9px] uppercase font-bold text-purpleAccent tracking-wider block">Momentum Indicators Rationale</span>
+                                <p className="text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{predictionJson.technical_analysis.indicators_rationale}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
