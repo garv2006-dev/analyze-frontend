@@ -4,7 +4,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 export default function ChartSection({ history }) {
   if (!history || history.length === 0) {
     return (
-      <div className="glass-panel p-8 rounded-2xl flex flex-col justify-center items-center h-80 text-slate-400">
+      <div className="glass-panel p-8 rounded-lg flex flex-col justify-center items-center h-80 text-slate-400 border border-slate-200 dark:border-slate-800">
         <p className="text-sm">Insufficient data logs to render charts.</p>
       </div>
     );
@@ -73,17 +73,17 @@ export default function ChartSection({ history }) {
   const activeSupports = (latestItem?.support_levels || (latestItem?.extracted_metrics?.support_level ? [latestItem.extracted_metrics.support_level] : [])).map(v => floatVal(v));
   const activeResistances = (latestItem?.resistance_levels || (latestItem?.extracted_metrics?.resistance_level ? [latestItem.extracted_metrics.resistance_level] : [])).map(v => floatVal(v));
 
-  // Custom tooltips for premium dark-mode styling
+  // Custom tooltips for clean, responsive styling in both light and dark modes
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="glass-panel p-4 rounded-xl border border-white/10 text-xs shadow-2xl font-sans">
-          <p className="text-slate-400 font-semibold mb-2">{label}</p>
-          <p className="text-cyanAccent font-mono mb-1">
-            Index Value: <span className="font-bold text-white">₹{floatVal(payload[0].value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        <div className="glass-panel p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-xs shadow-md font-sans bg-white dark:bg-slate-800">
+          <p className="text-slate-500 dark:text-slate-400 font-semibold mb-2">{label}</p>
+          <p className="text-cyan-600 dark:text-cyan-400 font-mono mb-1">
+            Index Value: <span className="font-bold text-slate-800 dark:text-slate-100">₹{floatVal(payload[0].value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </p>
-          <p className="text-purpleAccent font-mono">
-            AI Confidence: <span className="font-bold text-white">{intVal(payload[1].value)}%</span>
+          <p className="text-purple-600 dark:text-purple-400 font-mono">
+            AI Confidence: <span className="font-bold text-slate-800 dark:text-slate-100">{intVal(payload[1].value)}%</span>
           </p>
         </div>
       );
@@ -92,33 +92,31 @@ export default function ChartSection({ history }) {
   };
 
   return (
-    <div className="glass-panel p-6 rounded-2xl border border-white/5 shadow-glass relative overflow-hidden">
-      {/* Decorative blur element inside the card */}
-      <div className="absolute top-0 right-0 w-48 h-48 bg-cyanAccent/5 rounded-full filter blur-3xl pointer-events-none"></div>
+    <div className="glass-panel p-5 rounded-lg border border-slate-200 dark:border-slate-800 relative overflow-hidden">
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h3 className="text-lg font-bold text-white tracking-tight">Timeline Analytics</h3>
-          <p className="text-xs text-slate-400">Chronological correlation between AI predictions and market trajectories</p>
+          <h3 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Timeline Analytics</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Chronological correlation between AI predictions and market trajectories</p>
         </div>
         
         {/* Legends / Indicators */}
         <div className="flex flex-wrap items-center gap-4 text-xs">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyanAccent shadow-cyan-glow"></span>
-            <span className="text-slate-300 font-semibold">Extracted Value</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-500"></span>
+            <span className="text-slate-650 dark:text-slate-300 font-semibold">Extracted Value</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-purpleAccent shadow-purple-glow"></span>
-            <span className="text-slate-300 font-semibold">Confidence Score</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+            <span className="text-slate-650 dark:text-slate-300 font-semibold">Confidence Score</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-4 h-0.5 border-t-2 border-dashed border-emerald-400"></span>
-            <span className="text-emerald-400 font-semibold">Supports (S)</span>
+            <span className="w-4 h-0.5 border-t-2 border-dashed border-emerald-500"></span>
+            <span className="text-emerald-600 dark:text-emerald-450 font-semibold">Supports (S)</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-4 h-0.5 border-t-2 border-dashed border-rose-400"></span>
-            <span className="text-rose-400 font-semibold">Resistances (R)</span>
+            <span className="w-4 h-0.5 border-t-2 border-dashed border-rose-500"></span>
+            <span className="text-rose-600 dark:text-rose-455 font-semibold">Resistances (R)</span>
           </div>
         </div>
       </div>
@@ -130,19 +128,19 @@ export default function ChartSection({ history }) {
             margin={{ top: 10, right: 30, left: -20, bottom: 0 }}
           >
             <defs>
-              {/* Cyan gradient for Value */}
+              {/* Subtle Cyan gradient for Value */}
               <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.25}/>
+                <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.1}/>
                 <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
               </linearGradient>
-              {/* Purple gradient for Confidence */}
+              {/* Subtle Purple gradient for Confidence */}
               <linearGradient id="colorConfidence" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#a855f7" stopOpacity={0.25}/>
+                <stop offset="5%" stopColor="#a855f7" stopOpacity={0.08}/>
                 <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
               </linearGradient>
             </defs>
 
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.03)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.15)" vertical={false} />
             
             <XAxis 
               dataKey="time" 
@@ -175,7 +173,7 @@ export default function ChartSection({ history }) {
 
             <Tooltip content={<CustomTooltip />} />
 
-            {/* Render Horizontal Support Levels from latest scan (filtered to prevent chart squishing) */}
+            {/* Render Horizontal Support Levels from latest scan */}
             {activeSupports.filter(val => val > 0 && val >= leftDomainMin && val <= leftDomainMax).map((val, idx) => (
               <ReferenceLine
                 key={`support-${idx}`}
@@ -194,7 +192,7 @@ export default function ChartSection({ history }) {
               />
             ))}
 
-            {/* Render Horizontal Resistance Levels from latest scan (filtered to prevent chart squishing) */}
+            {/* Render Horizontal Resistance Levels from latest scan */}
             {activeResistances.filter(val => val > 0 && val >= leftDomainMin && val <= leftDomainMax).map((val, idx) => (
               <ReferenceLine
                 key={`resistance-${idx}`}
@@ -219,7 +217,7 @@ export default function ChartSection({ history }) {
               type="monotone" 
               dataKey="price" 
               stroke="#06b6d4" 
-              strokeWidth={3}
+              strokeWidth={2}
               fillOpacity={1} 
               fill="url(#colorPrice)" 
             />
@@ -230,7 +228,7 @@ export default function ChartSection({ history }) {
               type="monotone" 
               dataKey="confidence" 
               stroke="#a855f7" 
-              strokeWidth={2}
+              strokeWidth={1.5}
               strokeDasharray="4 4"
               fillOpacity={1} 
               fill="url(#colorConfidence)" 

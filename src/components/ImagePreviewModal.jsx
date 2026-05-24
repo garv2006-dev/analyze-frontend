@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, ZoomIn } from 'lucide-react';
+import { X, Eye } from 'lucide-react';
 
 export default function ImagePreviewModal({ isOpen, imageUrl, onClose }) {
   // Listen for escape key press to close lightbox
@@ -23,21 +23,21 @@ export default function ImagePreviewModal({ isOpen, imageUrl, onClose }) {
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md transition-opacity duration-300"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
       onClick={onClose}
     >
       <div 
-        className="relative max-w-4xl w-full bg-slate-900/90 rounded-2xl border border-white/10 overflow-hidden shadow-2xl animate-in scale-in duration-300"
+        className="relative max-w-4xl w-full bg-slate-900 rounded-lg border border-slate-800 overflow-hidden shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Overlay */}
-        <div className="absolute top-0 inset-x-0 p-4 bg-gradient-to-b from-black/80 to-transparent flex justify-between items-center z-10">
+        <div className="absolute top-0 inset-x-0 p-4 bg-slate-900/90 flex justify-between items-center z-10 border-b border-slate-800">
           <div className="flex items-center gap-2">
-            <span className="p-1 rounded bg-cyanAccent/20 border border-cyanAccent/30 text-cyanAccent text-[10px] uppercase font-bold tracking-wider">Live Screenshot</span>
-            <span className="text-xs text-slate-300 truncate max-w-xs">{(imageUrl || '').replace('/screenshots/', '')}</span>
+            <span className="p-1 rounded bg-slate-800 border border-slate-700 text-slate-300 text-[10px] uppercase font-bold tracking-wider">Live Screenshot</span>
+            <span className="text-xs text-slate-400 truncate max-w-xs">{(imageUrl || '').replace('/screenshots/', '')}</span>
           </div>
           <button 
-            className="p-1.5 rounded-lg bg-black/60 hover:bg-black/80 text-slate-300 hover:text-white transition-colors border border-white/10"
+            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700"
             onClick={onClose}
           >
             <X className="h-4 w-4" />
@@ -49,15 +49,15 @@ export default function ImagePreviewModal({ isOpen, imageUrl, onClose }) {
           <img 
             src={imageUrl} 
             alt="Graph scan high-resolution view" 
-            className="max-h-[70vh] object-contain rounded-lg border border-white/5 shadow-2xl transition-all duration-300 hover:scale-[1.02]"
+            className="max-h-[70vh] object-contain rounded border border-slate-850 shadow-md"
           />
         </div>
 
         {/* Footer Overlay */}
-        <div className="p-4 bg-slate-950 flex justify-between items-center text-xs text-slate-400 border-t border-white/5">
-          <p className="flex items-center gap-1.5"><ZoomIn className="h-3.5 w-3.5 text-cyanAccent" /> Hover image to zoom in</p>
+        <div className="p-4 bg-slate-900 flex justify-between items-center text-xs text-slate-400 border-t border-slate-800">
+          <p className="flex items-center gap-1.5"><Eye className="h-3.5 w-3.5 text-slate-500" /> High-Resolution Screenshot Capture</p>
           <button 
-            className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-semibold transition-colors"
+            className="px-3.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-200 rounded font-semibold transition-colors border border-slate-700"
             onClick={onClose}
           >
             Close
