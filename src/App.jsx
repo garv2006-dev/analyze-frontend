@@ -11,8 +11,8 @@ import { translations, translateDynamic } from './services/translations';
 
 const DEFAULT_TARGETS = [
   { symbol: 'NIFTY50', url: 'https://groww.in/charts/indices/nifty' },
-  { symbol: 'HDFC', url: 'https://groww.in/charts/ext/stocks/hdfc-bank' },
-  { symbol: 'JIO', url: 'https://groww.in/charts/ext/stocks/jio-financial-services' }
+  { symbol: 'HDFC', url: 'https://groww.in/stocks/hdfc-bank-ltd' },
+  { symbol: 'JIO', url: 'https://groww.in/stocks/jio-financial-services-ltd' }
 ];
 
 export default function App() {
@@ -53,13 +53,36 @@ export default function App() {
   const [customIntervalInput, setCustomIntervalInput] = useState('');
   const [isUpdatingInterval, setIsUpdatingInterval] = useState(false);
   const [intervalFeedback, setIntervalFeedback] = useState('');
+  const [onlyDuringMarketHours, setOnlyDuringMarketHours] = useState(false);
+  const [marketStartTime, setMarketStartTime] = useState('09:15');
+  const [marketEndTime, setMarketEndTime] = useState('15:30');
+  const [excludeWeekends, setExcludeWeekends] = useState(true);
   
   // Saved targets list from local storage or defaults
   const [targets, setTargets] = useState(() => {
     const saved = localStorage.getItem('target_assets');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Automatically migrate old 404 URLs if they exist in localStorage
+        let migrated = false;
+        const updated = parsed.map(target => {
+          if (target.url === 'https://groww.in/charts/ext/stocks/hdfc-bank') {
+            migrated = true;
+            return { ...target, url: 'https://groww.in/stocks/hdfc-bank-ltd' };
+          }
+          if (target.url === 'https://groww.in/charts/ext/stocks/jio-financial-services') {
+            migrated = true;
+            return { ...target, url: 'https://groww.in/stocks/jio-financial-services-ltd' };
+          }
+          return target;
+        });
+        
+        if (migrated) {
+          localStorage.setItem('target_assets', JSON.stringify(updated));
+          return updated;
+        }
+        return parsed;
       } catch (e) {
         console.error('Failed to parse target assets from localStorage:', e);
       }
@@ -113,6 +136,10 @@ export default function App() {
         if (response.success) {
           setSchedulerInterval(response.interval_minutes);
           setCustomIntervalInput(response.interval_minutes.toString());
+          if (response.only_during_market_hours !== undefined) setOnlyDuringMarketHours(response.only_during_market_hours);
+          if (response.market_start_time !== undefined) setMarketStartTime(response.market_start_time);
+          if (response.market_end_time !== undefined) setMarketEndTime(response.market_end_time);
+          if (response.exclude_weekends !== undefined) setExcludeWeekends(response.exclude_weekends);
         }
       } catch (err) {
         console.error('Failed to load background scheduler settings:', err);
@@ -121,7 +148,7 @@ export default function App() {
     fetchSchedulerSettings();
   }, []);
 
-  // Update background scheduler interval dynamically
+  // Update background scheduler settings dynamically
   const handleUpdateInterval = async () => {
     const mins = parseInt(customIntervalInput, 10);
     if (isNaN(mins) || mins < 1) {
@@ -133,15 +160,25 @@ export default function App() {
     setError(null);
     setIntervalFeedback('');
     try {
-      const response = await updateSchedulerSettings(mins);
+      const response = await updateSchedulerSettings({
+        interval_minutes: mins,
+        only_during_market_hours: onlyDuringMarketHours,
+        market_start_time: marketStartTime,
+        market_end_time: marketEndTime,
+        exclude_weekends: excludeWeekends
+      });
       if (response.success) {
         setSchedulerInterval(response.interval_minutes);
+        setOnlyDuringMarketHours(response.only_during_market_hours);
+        setMarketStartTime(response.market_start_time);
+        setMarketEndTime(response.market_end_time);
+        setExcludeWeekends(response.exclude_weekends);
         setIntervalFeedback(t('intervalSuccess').replace('{mins}', response.interval_minutes.toString()));
         setTimeout(() => setIntervalFeedback(''), 4000);
       }
     } catch (err) {
       console.error(err);
-      setError(`Failed to update background scheduler interval: ${err.message}`);
+      setError(`Failed to update background scheduler settings: ${err.message}`);
     } finally {
       setIsUpdatingInterval(false);
     }
@@ -272,8 +309,12 @@ export default function App() {
     setIsTriggering(true);
     setError(null);
     try {
-      const activeSymbol = stockSymbol || customSymbol || 'NIFTY50';
-      const activeUrl = targetUrl || customUrl || 'https://groww.in/charts/indices/nifty';
+      // Sanitize inputs to ignore React event objects from onClick triggers
+      const sanitizedUrl = (targetUrl && typeof targetUrl === 'string') ? targetUrl : null;
+      const sanitizedSymbol = (stockSymbol && typeof stockSymbol === 'string') ? stockSymbol : null;
+
+      const activeSymbol = sanitizedSymbol || customSymbol || 'NIFTY50';
+      const activeUrl = sanitizedUrl || customUrl || 'https://groww.in/charts/indices/nifty';
       
       const response = await triggerAnalysis(activeUrl, activeSymbol);
       if (response.success && response.data) {
@@ -592,58 +633,118 @@ export default function App() {
               <div className="my-4 border-t border-slate-200 dark:border-slate-800"></div>
               
               {/* Automated Scheduler Settings Control */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10 text-xs">
-                <div className="space-y-0.5">
-                  <p className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 uppercase tracking-wide">
-                    <Clock className="h-4 w-4 text-slate-500" /> {t('schedulerConfig')}
-                  </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                    {t('activeInterval')}: <span className="font-mono text-cyan-600 dark:text-cyan-400 font-bold">{schedulerInterval} {t('minutes')}</span>. {t('adjustIntervalDesc')}
-                  </p>
-                </div>
-                
-                <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto shrink-0">
-                  <div className="relative flex items-center">
-                    <input 
-                      type="text" 
-                      inputMode="numeric"
-                      placeholder="10" 
-                      value={customIntervalInput}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (/^\d*$/.test(val)) {
-                          setCustomIntervalInput(val);
-                        }
-                      }}
-                      className="w-full sm:w-28 px-3 py-2 pr-10 text-xs rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-cyan-600 transition-colors text-slate-800 dark:text-white font-mono font-bold"
-                    />
-                    <span className="absolute right-3 text-[10px] text-slate-400 dark:text-slate-500 font-bold font-sans select-none">{t('customIntervalMin')}</span>
+              <div className="flex flex-col gap-4 relative z-10 text-xs">
+                {/* Header */}
+                <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <Clock className="h-4 w-4 text-slate-500" />
+                  <div className="space-y-0.5">
+                    <p className="font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide">Automated Capturing Scheduler Configuration</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                      Configure active background capture frequency and trading hour constraints. Current active interval: <span className="font-bold text-cyan-600 dark:text-cyan-400 font-mono">{schedulerInterval}m</span>
+                    </p>
                   </div>
-                  
-                  <button
-                    onClick={handleUpdateInterval}
-                    disabled={isUpdatingInterval || !customIntervalInput.trim()}
-                    className="px-3.5 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shrink-0"
-                  >
-                    {isUpdatingInterval ? (
-                      <>
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                        <span>{t('updating')}</span>
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-3.5 w-3.5" />
-                        <span>{t('updateInterval')}</span>
-                      </>
-                    )}
-                  </button>
-                  
-                  {intervalFeedback && (
-                    <span className="text-[11px] text-emerald-500 dark:text-emerald-400 font-bold ml-2 tracking-wide">
-                      {intervalFeedback}
-                    </span>
-                  )}
                 </div>
+
+                {/* Settings Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                  {/* 1. Exclude Weekends */}
+                  <label className="flex items-center gap-2.5 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer select-none h-14">
+                    <input 
+                      type="checkbox"
+                      checked={excludeWeekends}
+                      onChange={(e) => setExcludeWeekends(e.target.checked)}
+                      className="h-4 w-4 rounded text-cyan-600 focus:ring-cyan-500 border-slate-350 dark:border-slate-700 dark:bg-slate-950"
+                    />
+                    <div className="space-y-0.5">
+                      <span className="font-bold text-slate-750 dark:text-slate-200 block text-[10px] uppercase tracking-wide">Exclude Weekends</span>
+                      <span className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">Capture Monday - Friday only</span>
+                    </div>
+                  </label>
+
+                  {/* 2. Limit to Market Hours */}
+                  <label className="flex items-center gap-2.5 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer select-none h-14">
+                    <input 
+                      type="checkbox"
+                      checked={onlyDuringMarketHours}
+                      onChange={(e) => setOnlyDuringMarketHours(e.target.checked)}
+                      className="h-4 w-4 rounded text-cyan-600 focus:ring-cyan-500 border-slate-350 dark:border-slate-700 dark:bg-slate-950"
+                    />
+                    <div className="space-y-0.5">
+                      <span className="font-bold text-slate-750 dark:text-slate-200 block text-[10px] uppercase tracking-wide">Limit to Market Hours</span>
+                      <span className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">Only run inside configured window</span>
+                    </div>
+                  </label>
+
+                  {/* 3. Time Window inputs */}
+                  <div className={`flex items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 transition-all h-14 ${onlyDuringMarketHours ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                    <div className="space-y-1 w-full">
+                      <span className="font-bold text-slate-500 dark:text-slate-400 block text-[8px] uppercase tracking-wider">Trading Time Window</span>
+                      <div className="flex items-center gap-1.5 justify-between">
+                        <input 
+                          type="text"
+                          placeholder="09:15"
+                          value={marketStartTime}
+                          onChange={(e) => setMarketStartTime(e.target.value)}
+                          className="w-16 text-center py-0.5 text-[11px] rounded bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-mono font-bold focus:outline-none"
+                        />
+                        <span className="text-slate-400 text-[10px] select-none font-bold">to</span>
+                        <input 
+                          type="text"
+                          placeholder="15:30"
+                          value={marketEndTime}
+                          onChange={(e) => setMarketEndTime(e.target.value)}
+                          className="w-16 text-center py-0.5 text-[11px] rounded bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 font-mono font-bold focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4. Interval minutes + Save button */}
+                  <div className="flex items-center gap-2 h-14">
+                    <div className="relative flex items-center w-1/3">
+                      <input 
+                        type="text" 
+                        inputMode="numeric"
+                        placeholder="5" 
+                        value={customIntervalInput}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (/^\d*$/.test(val)) {
+                            setCustomIntervalInput(val);
+                          }
+                        }}
+                        className="w-full px-2 py-2 pr-6 text-xs rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-cyan-600 transition-colors text-slate-800 dark:text-white font-mono font-bold text-center h-9"
+                        title="Interval minutes"
+                      />
+                      <span className="absolute right-2 text-[9px] text-slate-400 dark:text-slate-550 font-bold font-sans select-none">m</span>
+                    </div>
+
+                    <button
+                      onClick={handleUpdateInterval}
+                      disabled={isUpdatingInterval || !customIntervalInput.trim()}
+                      className="w-2/3 h-9 px-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 disabled:opacity-40 disabled:pointer-events-none text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      {isUpdatingInterval ? (
+                        <>
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          <span>Updating</span>
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-3.5 w-3.5" />
+                          <span>Update Settings</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Feedback indicator row */}
+                {intervalFeedback && (
+                  <div className="text-[11px] text-emerald-500 dark:text-emerald-450 font-bold tracking-wide mt-1 animate-fade-in">
+                    ✓ {intervalFeedback}
+                  </div>
+                )}
               </div>
             </div>
 

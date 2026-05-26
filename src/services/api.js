@@ -82,8 +82,8 @@ export async function chatWithAI(messages, predictionId = null) {
 export async function triggerAnalysis(targetUrl = null, stockSymbol = null) {
   try {
     const payload = {};
-    if (targetUrl) payload.target_url = targetUrl;
-    if (stockSymbol) payload.stock_symbol = stockSymbol;
+    if (targetUrl && typeof targetUrl === 'string') payload.target_url = targetUrl;
+    if (stockSymbol && typeof stockSymbol === 'string') payload.stock_symbol = stockSymbol;
     
     const response = await api.post('/api/predictions/trigger', payload);
     return response.data;
@@ -132,11 +132,13 @@ export async function getSchedulerSettings() {
  * Update the background scheduler's active capture interval dynamically
  * @param {number} intervalMinutes - the new interval in minutes
  */
-export async function updateSchedulerSettings(intervalMinutes) {
+export async function updateSchedulerSettings(settingsOrInterval) {
   try {
-    const response = await api.post('/api/predictions/scheduler-settings', {
-      interval_minutes: Number(intervalMinutes)
-    });
+    const payload = typeof settingsOrInterval === 'object'
+      ? settingsOrInterval
+      : { interval_minutes: Number(settingsOrInterval) };
+      
+    const response = await api.post('/api/predictions/scheduler-settings', payload);
     return response.data;
   } catch (error) {
     console.error('❌ Failed updating scheduler settings:', error.message);
