@@ -59,6 +59,7 @@ export const translations = {
     buy: "BUY",
     sell: "SELL",
     hold: "HOLD",
+    trainingModel: "Training Model / Simulated Backup",
     // Log list specific
     predictionLogsArchive: "System Scan Archive",
     recentHistoricalDetections: "Recent Historical Detections & Playwright Screenshot Evidence",
@@ -190,6 +191,7 @@ export const translations = {
     buy: "ખરીદો (BUY)",
     sell: "વેચો (SELL)",
     hold: "પકડી રાખો (HOLD)",
+    trainingModel: "ટ્રેનિંગ મોડલ / સિમ્યુલેશન બેકઅપ",
     // Log list specific
     predictionLogsArchive: "સિસ્ટમ સ્કેન આર્કાઇવ",
     recentHistoricalDetections: "તાજેતરના ઐતિહાસિક લોગ અને પ્લેરાઇટ સ્ક્રીનશોટ પુરાવા",
@@ -321,6 +323,7 @@ export const translations = {
     buy: "खरीदें (BUY)",
     sell: "बेचें (SELL)",
     hold: "होल्ड करें (HOLD)",
+    trainingModel: "ट्रेनिंग मॉडल / सिमुलेशन बैकअप",
     // Log list specific
     predictionLogsArchive: "सिस्टम स्कैन संग्रह",
     recentHistoricalDetections: "हालिया ऐतिहासिक लॉग और प्लेराइट स्क्रीनशॉट सबूत",

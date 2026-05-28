@@ -147,7 +147,13 @@ export default function LogList({
                       <span className={`text-[9px] uppercase tracking-wide font-extrabold px-1.5 py-0.5 rounded border shrink-0 ${signalBadges[signal] || signalBadges.HOLD}`}>
                         {translateDynamic(signal, language)}
                       </span>
+                      {item.is_mock && (
+                        <span className="text-[9px] uppercase tracking-wide font-extrabold px-2 py-0.5 rounded border bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 dark:bg-amber-400/10 dark:border-amber-400/30 shrink-0 animate-pulse font-sans">
+                          ⚠️ {t('trainingModel')}
+                        </span>
+                      )}
                     </div>
+
                     <div className="flex items-center gap-3 text-slate-550 dark:text-slate-400 text-[11px] mt-1 font-mono">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" /> {formattedDate}
