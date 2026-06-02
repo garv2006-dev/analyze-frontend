@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, RefreshCw, Layers, Globe, Radio, ShieldCheck, AlertCircle, TrendingUp, TrendingDown, Clock, Activity, Zap, Sun, Moon, Sparkles, ChevronDown } from 'lucide-react';
 import { getPredictions, triggerAnalysis, deletePrediction, getSchedulerSettings, updateSchedulerSettings } from './services/api';
 import MetricCard from './components/MetricCard';
+import PortfolioSection from './components/PortfolioSection';
 import ChartSection from './components/ChartSection';
 import LogList from './components/LogList';
 import ImagePreviewModal from './components/ImagePreviewModal';
@@ -751,6 +752,8 @@ export default function App() {
              {/* 1. Metric Cards Grid */}
             <MetricCard prediction={latestPrediction} language={language} />
 
+            {/* 1.5. Portfolio Tracking Section */}
+            <PortfolioSection prediction={latestPrediction} language={language} />
 
             {/* 2. Detailed Predictions & Timeline Analytics Panel (User request: "more ditels of pridiction") */}
             {latestPrediction && (
