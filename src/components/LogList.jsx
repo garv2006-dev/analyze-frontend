@@ -9,12 +9,18 @@ export default function LogList({
   totalPages = 1,
   onPageChange,
   onDeletePrediction,
+  onBulkDelete,
   totalCount = 0,
   language = 'en'
 }) {
   const [expandedId, setExpandedId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Bulk selection states
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const t = (key) => translations[language]?.[key] || translations['en']?.[key] || key;
 
@@ -30,10 +36,43 @@ export default function LogList({
         await onDeletePrediction(id);
       }
       setConfirmDeleteId(null);
+      // Remove from selection if it was selected
+      setSelectedIds(prev => prev.filter(selectedId => selectedId !== id));
     } catch (err) {
       console.error(err);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleToggleSelect = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(predictions.map(p => p.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleBulkDeleteSubmit = async (deleteAll = false) => {
+    if (isBulkDeleting || (!deleteAll && selectedIds.length === 0)) return;
+    
+    setIsBulkDeleting(true);
+    try {
+      if (onBulkDelete) {
+        await onBulkDelete(deleteAll ? [] : selectedIds, deleteAll);
+      }
+      setSelectedIds([]);
+      setConfirmDeleteAll(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -65,13 +104,91 @@ export default function LogList({
   const activeTotal = totalCount || predictions.length;
 
   return (
-    <div className="space-y-4 font-sans">
-      <div className="flex justify-between items-center px-2">
-        <h3 className="text-base font-bold text-slate-850 dark:text-white tracking-tight">{t('predictionLogsArchive')}</h3>
-        <span className="text-[11px] text-slate-550 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded border border-slate-200 dark:border-slate-700 font-mono">
-          {t('totalLogs')}: {activeTotal}
-        </span>
+    <div className="space-y-4 font-sans relative">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-2 gap-3">
+        <h3 className="text-base font-bold text-slate-850 dark:text-white tracking-tight flex items-center gap-2">
+          {t('predictionLogsArchive')}
+          <span className="text-[11px] font-normal text-slate-550 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded border border-slate-200 dark:border-slate-700 font-mono">
+            {t('totalLogs')}: {activeTotal}
+          </span>
+        </h3>
+        
+        <div className="flex items-center gap-3 w-full sm:w-auto shrink-0 text-xs">
+          {/* Select All Checkbox */}
+          {predictions.length > 0 && (
+            <label className="flex items-center gap-1.5 cursor-pointer select-none px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border border-transparent">
+              <input 
+                type="checkbox" 
+                checked={selectedIds.length === predictions.length && predictions.length > 0}
+                onChange={handleSelectAll}
+                className="h-3.5 w-3.5 rounded text-cyan-600 focus:ring-cyan-500 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900"
+              />
+              <span className="text-slate-600 dark:text-slate-300 font-bold">{t('selectAll') || 'Select All'}</span>
+            </label>
+          )}
+
+          {/* Delete All (Clear) Dashboard Button */}
+          {activeTotal > 0 && (
+            <div className="relative">
+              {confirmDeleteAll ? (
+                <div className="flex items-center gap-1 shrink-0 bg-rose-50 dark:bg-rose-950/30 p-0.5 rounded border border-rose-200 dark:border-rose-900/50">
+                  <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold px-2 whitespace-nowrap">Hide All?</span>
+                  <button 
+                    onClick={() => handleBulkDeleteSubmit(true)}
+                    className="p-1 rounded bg-rose-600 text-white transition-colors"
+                    title="Confirm Hide All"
+                    disabled={isBulkDeleting}
+                  >
+                    {isBulkDeleting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  </button>
+                  <button 
+                    onClick={() => setConfirmDeleteAll(false)}
+                    className="p-1 rounded bg-rose-200 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 hover:bg-rose-300 dark:hover:bg-rose-800 transition-colors"
+                    title="Cancel"
+                    disabled={isBulkDeleting}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setConfirmDeleteAll(true)}
+                  className="px-3 py-1.5 rounded bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold border border-rose-200 dark:border-rose-500/30 transition-colors flex items-center gap-1.5 whitespace-nowrap"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>{t('clearDashboard') || 'Clear Dashboard'}</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Floating Action Bar for Selected Items */}
+      {selectedIds.length > 0 && (
+        <div className="sticky top-4 z-40 flex items-center justify-between p-3 bg-cyan-600 text-white rounded-lg shadow-lg border border-cyan-500 animate-fade-in mx-2">
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <span className="bg-white/20 px-2 py-0.5 rounded text-white">{selectedIds.length}</span>
+            <span>Items Selected</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setSelectedIds([])}
+              className="px-3 py-1.5 rounded bg-cyan-700/50 hover:bg-cyan-700 text-white transition-colors text-xs font-bold border border-cyan-500"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={() => handleBulkDeleteSubmit(false)}
+              disabled={isBulkDeleting}
+              className="px-3 py-1.5 rounded bg-white text-cyan-700 hover:bg-cyan-50 transition-colors flex items-center gap-1.5 text-xs font-extrabold shadow-sm"
+            >
+              {isBulkDeleting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              <span>Hide Selected</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3">
         {predictions.map((item) => {
@@ -140,7 +257,16 @@ export default function LogList({
 
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-bold text-slate-800 dark:text-white font-mono shrink-0">{t('scanHash')} #{item.id}</span>
+                      <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                        <input 
+                          type="checkbox" 
+                          checked={selectedIds.includes(item.id)}
+                          onChange={() => handleToggleSelect(item.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-3 w-3 rounded text-cyan-600 focus:ring-cyan-500 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 cursor-pointer"
+                        />
+                        <span className="text-xs font-bold text-slate-800 dark:text-white font-mono shrink-0">#{item.id}</span>
+                      </div>
                       <span className={`text-[9px] uppercase tracking-wide font-extrabold px-1.5 py-0.5 rounded border shrink-0 ${trendBadges[trend.toUpperCase()] || trendBadges.SIDEWAYS}`}>
                         {translateDynamic(trend, language)}
                       </span>

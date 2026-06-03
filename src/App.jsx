@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, RefreshCw, Layers, Globe, Radio, ShieldCheck, AlertCircle, TrendingUp, TrendingDown, Clock, Activity, Zap, Sun, Moon, Sparkles, ChevronDown } from 'lucide-react';
-import { getPredictions, triggerAnalysis, deletePrediction, getSchedulerSettings, updateSchedulerSettings } from './services/api';
+import { getPredictions, triggerAnalysis, deletePrediction, bulkDeletePredictions, getSchedulerSettings, updateSchedulerSettings } from './services/api';
 import MetricCard from './components/MetricCard';
 import PortfolioSection from './components/PortfolioSection';
 import ChartSection from './components/ChartSection';
@@ -379,6 +379,22 @@ export default function App() {
     } catch (err) {
       console.error(err);
       setError(`Failed to delete record #${id}: ${err.message}`);
+    }
+  };
+
+  // Handle bulk hiding
+  const handleBulkDelete = async (ids, deleteAll) => {
+    setError(null);
+    try {
+      const response = await bulkDeletePredictions(ids, deleteAll);
+      if (response.success) {
+        // Refresh page 1 since bulk edits change the total structure substantially
+        loadData(false, 1, selectedFilter);
+        setCurrentPage(1);
+      }
+    } catch (err) {
+      console.error(err);
+      setError(`Failed to bulk hide records: ${err.message}`);
     }
   };
 
@@ -901,11 +917,11 @@ export default function App() {
                 <LogList 
                   predictions={filteredPredictions} 
                   onPreviewImage={openPreview}
-
                   currentPage={currentPage}
                   totalPages={totalPages}
                   onPageChange={setCurrentPage}
                   onDeletePrediction={handleDeletePrediction}
+                  onBulkDelete={handleBulkDelete}
                   totalCount={totalCount}
                   language={language}
                 />

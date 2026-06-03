@@ -62,6 +62,24 @@ export async function deletePrediction(id) {
 }
 
 /**
+ * Bulk hide prediction records from the dashboard
+ * @param {Array<number>} ids - Array of prediction IDs to hide
+ * @param {boolean} deleteAll - If true, ignores ids array and hides all predictions
+ */
+export async function bulkDeletePredictions(ids = [], deleteAll = false) {
+  try {
+    const response = await api.post(`/api/predictions/bulk-delete`, {
+      ids,
+      delete_all: deleteAll
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`❌ Failed bulk deleting predictions:`, error.message);
+    throw parseError(error);
+  }
+}
+
+/**
  * Send messages to the AI assistant agent, incorporating latest chart parameters
  * @param {Array} messages - conversation history [{role, content}]
  * @param {number|null} predictionId - optional prediction ID to focus on
