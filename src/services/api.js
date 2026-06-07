@@ -111,6 +111,21 @@ export async function triggerAnalysis(targetUrl = null, stockSymbol = null) {
   }
 }
 
+/**
+ * Trigger full capture + AI analysis for ALL saved watchlist assets simultaneously.
+ * Returns a per-asset summary with individual success/failure status.
+ */
+export async function triggerAllAnalysis() {
+  try {
+    const response = await api.post('/api/predictions/trigger-all', {});
+    return response.data;
+  } catch (error) {
+    console.error('❌ Trigger-all analysis failed:', error.message);
+    throw parseError(error);
+  }
+}
+
+
 
 /**
  * Helper to extract meaningful user-facing messages from axios catches
@@ -163,3 +178,48 @@ export async function updateSchedulerSettings(settingsOrInterval) {
     throw parseError(error);
   }
 }
+
+// ─── Saved Assets (Persistent DB Watchlist) ───────────────────────────────────
+
+/**
+ * Fetch all saved watchlist assets from the database
+ */
+export async function getSavedAssets() {
+  try {
+    const response = await api.get('/api/assets/');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Failed fetching saved assets:', error.message);
+    throw parseError(error);
+  }
+}
+
+/**
+ * Permanently add a new watchlist asset to the database
+ * @param {string} symbol - stock/index ticker (e.g. "RELIANCE")
+ * @param {string} url - chart URL to capture
+ */
+export async function createSavedAsset(symbol, url) {
+  try {
+    const response = await api.post('/api/assets/', { symbol, url });
+    return response.data;
+  } catch (error) {
+    console.error('❌ Failed creating saved asset:', error.message);
+    throw parseError(error);
+  }
+}
+
+/**
+ * Permanently remove a watchlist asset from the database
+ * @param {string} symbol - ticker symbol to delete
+ */
+export async function deleteSavedAsset(symbol) {
+  try {
+    const response = await api.delete(`/api/assets/${symbol}`);
+    return response.data;
+  } catch (error) {
+    console.error(`❌ Failed deleting saved asset '${symbol}':`, error.message);
+    throw parseError(error);
+  }
+}
+

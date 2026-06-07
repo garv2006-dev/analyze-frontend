@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, RefreshCw, Layers, Globe, Radio, ShieldCheck, AlertCircle, TrendingUp, TrendingDown, Clock, Activity, Zap, Sun, Moon, Sparkles, ChevronDown } from 'lucide-react';
-import { getPredictions, triggerAnalysis, deletePrediction, bulkDeletePredictions, getSchedulerSettings, updateSchedulerSettings } from './services/api';
+import { getPredictions, triggerAnalysis, triggerAllAnalysis, deletePrediction, bulkDeletePredictions, getSchedulerSettings, updateSchedulerSettings, getSavedAssets, createSavedAsset, deleteSavedAsset } from './services/api';
 import MetricCard from './components/MetricCard';
 import PortfolioSection from './components/PortfolioSection';
 import ChartSection from './components/ChartSection';
@@ -22,6 +22,10 @@ export default function App() {
   const [isTriggering, setIsTriggering] = useState(false);
   const [error, setError] = useState(null);
   const [wsStatus, setWsStatus] = useState('CONNECTING'); // CONNECTING, CONNECTED, DISCONNECTED
+
+  // Multi-asset run-all state
+  const [isRunningAll, setIsRunningAll] = useState(false);
+  const [runAllProgress, setRunAllProgress] = useState(null); // null | { done: number, total: number }
 
   // Multi-language states
   const [language, setLanguage] = useState(localStorage.getItem('language') || 'en');
@@ -59,13 +63,12 @@ export default function App() {
   const [marketEndTime, setMarketEndTime] = useState('15:30');
   const [excludeWeekends, setExcludeWeekends] = useState(true);
   
-  // Saved targets list from local storage or defaults
+  // Saved targets list — initially from localStorage, then synced from DB
   const [targets, setTargets] = useState(() => {
     const saved = localStorage.getItem('target_assets');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Automatically migrate old 404 URLs if they exist in localStorage
         let migrated = false;
         const updated = parsed.map(target => {
           if (target.url === 'https://groww.in/charts/ext/stocks/hdfc-bank') {
@@ -78,7 +81,6 @@ export default function App() {
           }
           return target;
         });
-        
         if (migrated) {
           localStorage.setItem('target_assets', JSON.stringify(updated));
           return updated;
@@ -90,6 +92,23 @@ export default function App() {
     }
     return DEFAULT_TARGETS;
   });
+
+  // On mount: sync targets from the persistent database (source of truth)
+  useEffect(() => {
+    const syncAssetsFromDB = async () => {
+      try {
+        const response = await getSavedAssets();
+        if (response.success && Array.isArray(response.data) && response.data.length > 0) {
+          const dbTargets = response.data.map(a => ({ symbol: a.symbol, url: a.url }));
+          setTargets(dbTargets);
+          localStorage.setItem('target_assets', JSON.stringify(dbTargets));
+        }
+      } catch (err) {
+        console.error('Failed to sync assets from DB (using localStorage fallback):', err);
+      }
+    };
+    syncAssetsFromDB();
+  }, []);
 
   // Workspace symbol filter state
   const [selectedFilter, setSelectedFilter] = useState('ALL');
@@ -347,16 +366,56 @@ export default function App() {
     }
   };
 
-  // Handle delete target asset from saved dropdown targets
-  const handleDeleteTarget = (symbolToDelete) => {
+  // Handle delete target asset from saved dropdown targets (removes from DB + localStorage)
+  const handleDeleteTarget = async (symbolToDelete) => {
     const updatedTargets = targets.filter(t => t.symbol.toUpperCase() !== symbolToDelete.toUpperCase());
     setTargets(updatedTargets);
     localStorage.setItem('target_assets', JSON.stringify(updatedTargets));
-    
-    // If the currently selected workspace is the deleted one, switch back to ALL
     if (selectedFilter.toUpperCase() === symbolToDelete.toUpperCase()) {
       setSelectedFilter('ALL');
       setCurrentPage(1);
+    }
+    try {
+      await deleteSavedAsset(symbolToDelete);
+    } catch (err) {
+      console.error(`Failed to delete asset '${symbolToDelete}' from DB:`, err);
+    }
+  };
+
+  // Handle adding a new watchlist asset (saves permanently to DB + localStorage)
+  const handleAddTarget = async (symbol, url) => {
+    const response = await createSavedAsset(symbol, url);
+    if (response.success) {
+      const newAsset = { symbol: response.data.symbol, url: response.data.url };
+      const updatedTargets = [...targets, newAsset];
+      setTargets(updatedTargets);
+      localStorage.setItem('target_assets', JSON.stringify(updatedTargets));
+    } else {
+      throw new Error(response.detail || 'Failed to save asset to database');
+    }
+  };
+
+  // Handle "Run All Assets" — triggers full pipeline for every saved watchlist asset
+  const handleTriggerAllScans = async () => {
+    if (isRunningAll || isTriggering) return;
+    setIsRunningAll(true);
+    setError(null);
+    setRunAllProgress({ done: 0, total: targets.length || 1 });
+    try {
+      const response = await triggerAllAnalysis();
+      if (response.success) {
+        setRunAllProgress({ done: response.completed, total: response.total });
+        // Refresh the log list and switch to ALL view to show all results
+        loadData(false, 1, 'ALL');
+        setSelectedFilter('ALL');
+        setCurrentPage(1);
+      }
+    } catch (err) {
+      console.error(err);
+      setError(`Run-all pipeline failed: ${err.message}`);
+    } finally {
+      setIsRunningAll(false);
+      setTimeout(() => setRunAllProgress(null), 5000);
     }
   };
 
@@ -513,6 +572,7 @@ export default function App() {
             onChange={handleSelectAsset}
             targets={targets}
             onDeleteTarget={handleDeleteTarget}
+            onAddTarget={handleAddTarget}
           />
 
           {/* WebSocket status pill */}
@@ -534,10 +594,10 @@ export default function App() {
             <span>{t('apScheduler')}: {t('active')} ({schedulerInterval}m)</span>
           </div>
 
-          {/* Trigger Scan Button */}
+          {/* Trigger Scan Button (single asset) */}
           <button
             onClick={handleTriggerScan}
-            disabled={isTriggering || isLoading}
+            disabled={isTriggering || isRunningAll || isLoading}
             className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50 disabled:pointer-events-none"
           >
             {isTriggering ? (
@@ -549,6 +609,30 @@ export default function App() {
               <>
                 <Play className="h-3.5 w-3.5 fill-current" />
                 <span>{t('instantPipelineTrigger')}</span>
+              </>
+            )}
+          </button>
+
+          {/* Run All Assets Button */}
+          <button
+            onClick={handleTriggerAllScans}
+            disabled={isRunningAll || isTriggering || isLoading || targets.length === 0}
+            title={`Analyze all ${targets.length} saved asset(s) at once`}
+            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50 disabled:pointer-events-none shadow-sm"
+          >
+            {isRunningAll ? (
+              <>
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                <span>
+                  {runAllProgress
+                    ? `${runAllProgress.done}/${runAllProgress.total} done`
+                    : 'Running...'}
+                </span>
+              </>
+            ) : (
+              <>
+                <Layers className="h-3.5 w-3.5" />
+                <span>Run All ({targets.length})</span>
               </>
             )}
           </button>
@@ -601,6 +685,7 @@ export default function App() {
                     onChange={handleSelectAsset}
                     targets={targets}
                     onDeleteTarget={handleDeleteTarget}
+                    onAddTarget={handleAddTarget}
                     placeholder={t('quickSelectAsset')}
                     isConsole={true}
                   />
