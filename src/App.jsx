@@ -472,7 +472,7 @@ export default function App() {
       <main className="max-w-7xl mx-auto mt-8 px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left Toolbar panel */}
-        <div className="space-y-6 lg:col-span-1">
+        <div className="space-y-6 lg:col-span-1 order-2 lg:order-1">
           <TargetUrlManager 
             targetUrl={targetUrl}
             onSaveUrl={handleSaveUrl}
@@ -502,7 +502,7 @@ export default function App() {
         </div>
 
         {/* Right Details/Results panel */}
-        <div className="space-y-6 lg:col-span-2">
+        <div className="space-y-6 lg:col-span-2 order-1 lg:order-2">
           <ScreenshotComparator 
             activePrediction={activePrediction}
             viewMode={viewMode}
