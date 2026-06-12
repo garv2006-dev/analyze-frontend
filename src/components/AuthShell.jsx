@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, Zap, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
+import { Mail, Lock, User, Zap, RefreshCw, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 
 export default function AuthShell({ onLogin, onRegister, loading, error, success, setError, setSuccess }) {
   const [authMode, setAuthMode] = useState('login'); // 'login' | 'register'
@@ -13,6 +13,8 @@ export default function AuthShell({ onLogin, onRegister, loading, error, success
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
 
   // Password Strength checks
   const hasMinLength = regPassword.length >= 8;
@@ -105,13 +107,20 @@ export default function AuthShell({ onLogin, onRegister, loading, error, success
               <div className="relative">
                 <Lock className="absolute left-3 top-3.5 h-4 w-4 text-slate-550" />
                 <input
-                  type="password"
+                  type={showLoginPassword ? "text" : "password"}
                   required
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-9 pr-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
+                  className="w-full pl-9 pr-10 py-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowLoginPassword(!showLoginPassword)}
+                  className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300 focus:outline-none"
+                >
+                  {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 
@@ -172,13 +181,20 @@ export default function AuthShell({ onLogin, onRegister, loading, error, success
               <div className="relative">
                 <Lock className="absolute left-3 top-3.5 h-4 w-4 text-slate-550" />
                 <input
-                  type="password"
+                  type={showRegPassword ? "text" : "password"}
                   required
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-9 pr-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
+                  className="w-full pl-9 pr-10 py-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowRegPassword(!showRegPassword)}
+                  className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300 focus:outline-none"
+                >
+                  {showRegPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 

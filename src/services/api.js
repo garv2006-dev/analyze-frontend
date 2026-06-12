@@ -87,9 +87,12 @@ export async function getTargetUrl() {
   }
 }
 
-export async function createTargetUrl(url) {
+export async function createTargetUrl(url, intervalMinutes = 5) {
   try {
-    const response = await api.post('/api/target-url/', { url });
+    const response = await api.post('/api/target-url/', { 
+      url, 
+      interval_minutes: parseInt(intervalMinutes, 10) 
+    });
     return response.data;
   } catch (error) {
     console.error('❌ Configuring target URL failed:', error.message);

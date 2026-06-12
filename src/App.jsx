@@ -232,7 +232,16 @@ export default function App() {
     try {
       const res = await registerUser(name, email, password);
       if (res.success) {
-        setAuthSuccess("Registration completed successfully! You can now sign in.");
+        // Automatically login the user after successful registration
+        const loginRes = await loginUser(email, password);
+        if (loginRes.success && loginRes.access_token) {
+          localStorage.setItem('token', loginRes.access_token);
+          setUser(loginRes.user);
+          setIsAuthenticated(true);
+          await bootstrapApp();
+        } else {
+          setAuthSuccess("Registration completed successfully! You can now sign in.");
+        }
       }
     } catch (err) {
       setAuthError(err.message);
@@ -271,12 +280,12 @@ export default function App() {
   };
 
   // Target URL Management
-  const handleSaveUrl = async (url) => {
+  const handleSaveUrl = async (url, intervalMinutes) => {
     setUrlError(null);
     setUrlLoading(true);
 
     try {
-      const res = await createTargetUrl(url);
+      const res = await createTargetUrl(url, intervalMinutes);
       if (res.success) {
         setTargetUrl(res.data);
         loadAuditLogs(1);

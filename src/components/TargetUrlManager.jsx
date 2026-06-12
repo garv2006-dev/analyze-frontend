@@ -3,10 +3,11 @@ import { Globe, RefreshCw, AlertCircle } from 'lucide-react';
 
 export default function TargetUrlManager({ targetUrl, onSaveUrl, onDeleteUrl, urlLoading, urlError, monitoringStatus, theme }) {
   const [urlInput, setUrlInput] = useState('');
+  const [intervalInput, setIntervalInput] = useState(5);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSaveUrl(urlInput);
+    onSaveUrl(urlInput, intervalInput);
   };
 
   return (
@@ -25,22 +26,47 @@ export default function TargetUrlManager({ targetUrl, onSaveUrl, onDeleteUrl, ur
       )}
 
       {!targetUrl ? (
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <p className="text-[11px] text-slate-500 font-medium">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <p className="text-[11px] text-slate-550 font-medium">
             Configure the target URL you wish to monitor. You can only keep exactly one active URL at a time.
           </p>
-          <div className="relative">
-            <input
-              type="text"
-              required
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="https://example.com/charts"
-              className={`w-full px-3 py-2.5 rounded-xl text-xs placeholder-slate-600 border focus:outline-none focus:border-cyan-500 transition-colors font-mono ${
+          
+          <div>
+            <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1.5">Target URL</label>
+            <div className="relative">
+              <input
+                type="text"
+                required
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                placeholder="https://example.com/charts"
+                className={`w-full px-3 py-2.5 rounded-xl text-xs placeholder-slate-650 border focus:outline-none focus:border-cyan-500 transition-colors font-mono ${
+                  theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-350 text-slate-900'
+                }`}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1.5">Capture Interval</label>
+            <select
+              value={intervalInput}
+              onChange={(e) => setIntervalInput(parseInt(e.target.value, 10))}
+              className={`w-full px-3 py-2.5 rounded-xl text-xs border focus:outline-none focus:border-cyan-500 transition-colors font-semibold ${
                 theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-350 text-slate-900'
               }`}
-            />
+            >
+              <option value={1}>Every 1 Minute</option>
+              <option value={2}>Every 2 Minutes</option>
+              <option value={3}>Every 3 Minutes</option>
+              <option value={5}>Every 5 Minutes</option>
+              <option value={10}>Every 10 Minutes</option>
+              <option value={15}>Every 15 Minutes</option>
+              <option value={30}>Every 30 Minutes</option>
+              <option value={60}>Every 60 Minutes (1 Hour)</option>
+            </select>
           </div>
+
           <button
             type="submit"
             disabled={urlLoading || !urlInput.trim()}
@@ -58,6 +84,13 @@ export default function TargetUrlManager({ targetUrl, onSaveUrl, onDeleteUrl, ur
             {targetUrl.url}
           </div>
           
+          <div className="flex items-center justify-between border-b border-slate-800/20 pb-2">
+            <span className="text-[10px] text-slate-550 font-bold uppercase tracking-wider">Interval:</span>
+            <span className="text-xs font-mono font-bold text-cyan-400">
+              {targetUrl.interval_minutes} {targetUrl.interval_minutes === 1 ? 'minute' : 'minutes'}
+            </span>
+          </div>
+
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-slate-550 font-bold uppercase tracking-wider">Status Badge:</span>
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${
