@@ -1,10 +1,15 @@
 import React from 'react';
-import { ShieldCheck, Search, Filter, RefreshCw } from 'lucide-react';
+import { ShieldCheck, Search, Filter, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function LogsPanel({ 
   auditLogs, logsLoading, logSearch, onLogSearchChange, 
-  logFilter, onLogFilterChange, theme 
+  logFilter, onLogFilterChange, theme, logPage = 1, logTotal = 0, onLogPageChange
 }) {
+  const PAGE_SIZE = 15;
+  const totalPages = Math.ceil(logTotal / PAGE_SIZE) || 1;
+  const startIdx = logTotal === 0 ? 0 : (logPage - 1) * PAGE_SIZE + 1;
+  const endIdx = Math.min(logPage * PAGE_SIZE, logTotal);
+
   return (
     <div className={`glass-panel p-6 rounded-2xl border ${
       theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
@@ -99,6 +104,47 @@ export default function LogsPanel({
       ) : (
         <div className="py-8 text-center text-xs text-slate-500">
           No logs found matching filter criteria.
+        </div>
+      )}
+
+      {/* Pagination Footer */}
+      {logTotal > 0 && (
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mt-5 pt-4 border-t border-slate-800/10">
+          <div className="text-[10px] text-slate-505 dark:text-slate-500 font-semibold font-mono">
+            Showing {startIdx}-{endIdx} of {logTotal} logs
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onLogPageChange(logPage - 1)}
+              disabled={logPage === 1 || logsLoading}
+              className={`p-1.5 rounded-lg border flex items-center justify-center transition-colors disabled:opacity-40 disabled:pointer-events-none shadow-sm cursor-pointer ${
+                theme === 'dark' 
+                  ? 'bg-slate-950 border-slate-850 hover:bg-slate-900 text-slate-400' 
+                  : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-600'
+              }`}
+              title="Previous Page"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            
+            <span className="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-950/20 border border-slate-800/10 dark:border-slate-850 font-mono">
+              Page {logPage} of {totalPages}
+            </span>
+            
+            <button
+              onClick={() => onLogPageChange(logPage + 1)}
+              disabled={logPage === totalPages || logsLoading}
+              className={`p-1.5 rounded-lg border flex items-center justify-center transition-colors disabled:opacity-40 disabled:pointer-events-none shadow-sm cursor-pointer ${
+                theme === 'dark' 
+                  ? 'bg-slate-950 border-slate-850 hover:bg-slate-900 text-slate-400' 
+                  : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-600'
+              }`}
+              title="Next Page"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
     </div>

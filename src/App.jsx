@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  RefreshCw, User, Sun, Moon, Zap, LogOut
+  RefreshCw, User, Sun, Moon, Zap, LogOut, Menu, X
 } from 'lucide-react';
 import { 
   registerUser, loginUser, getMe, getTargetUrl, createTargetUrl, 
@@ -12,7 +12,6 @@ import {
 import AuthShell from './components/AuthShell';
 import TargetUrlManager from './components/TargetUrlManager';
 import SchedulerController from './components/SchedulerController';
-import RateLimitWidget from './components/RateLimitWidget';
 import ScreenshotComparator from './components/ScreenshotComparator';
 import CaptureGallery from './components/CaptureGallery';
 import LogsPanel from './components/LogsPanel';
@@ -52,6 +51,8 @@ export default function App() {
   const [logsLoading, setLogsLoading] = useState(false);
   const [logSearch, setLogSearch] = useState('');
   const [logFilter, setLogFilter] = useState('ALL');
+  const [logPage, setLogPage] = useState(1);
+  const [logTotal, setLogTotal] = useState(0);
 
   // Rate Limits States
   const [rateLimits, setRateLimits] = useState(null);
@@ -61,6 +62,9 @@ export default function App() {
 
   // UI Theme (Default to Dark Mode for premium aesthetics)
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+
+  // Mobile menu toggle
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Initialize and check JWT on mount
   useEffect(() => {
@@ -147,7 +151,8 @@ export default function App() {
       const res = await getAuditLogs(page, 15, eventFilter, searchVal);
       if (res.success) {
         setAuditLogs(res.data);
-        // We only show first page of logs in custom component, paginate if needed
+        setLogPage(page);
+        setLogTotal(res.total || 0);
       }
     } catch (err) {
       console.error("Failed to load audit logs:", err);
@@ -369,6 +374,10 @@ export default function App() {
     loadAuditLogs(1, logFilter, val);
   };
 
+  const handleLogPageChange = (page) => {
+    loadAuditLogs(page, logFilter, logSearch);
+  };
+
   // Loader screen on bootstrap
   if (predictionsLoading && !isAuthenticated) {
     return (
@@ -401,70 +410,100 @@ export default function App() {
     } font-sans overflow-x-hidden`}>
       
       {/* Top Header navbar */}
-      <header className={`max-w-7xl mx-auto py-5 px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-start sm:items-center border-b ${
+      <header className={`max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between sm:items-center border-b ${
         theme === 'dark' ? 'border-slate-900 bg-slate-950' : 'border-slate-200 bg-white shadow-sm'
       } gap-4 relative z-40`}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 flex items-center justify-center bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-xl shrink-0 shadow-lg">
-            <Zap className="h-5 w-5 text-white" />
+        
+        {/* Brand/Logo & Hamburger Row */}
+        <div className="flex justify-between items-center w-full sm:w-auto">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 flex items-center justify-center bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-xl shrink-0 shadow-lg">
+              <Zap className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className={`text-lg font-black tracking-wider uppercase ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                Aether Monitor
+              </h1>
+              <p className="text-[10px] text-slate-500 font-extrabold uppercase tracking-widest">AI Audit System Dashboard</p>
+            </div>
           </div>
-          <div>
-            <h1 className={`text-lg font-black tracking-wider uppercase ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-              Aether Monitor
-            </h1>
-            <p className="text-[10px] text-slate-500 font-extrabold uppercase tracking-widest">AI Audit System Dashboard</p>
-          </div>
+
+          {/* Hamburger Menu Toggle Button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className={`sm:hidden p-2 rounded-lg border transition-colors flex items-center justify-center shadow-sm ${
+              theme === 'dark' ? 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-600'
+            }`}
+            aria-label="Toggle Navigation Menu"
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
 
         {/* Global Toolbar Controls */}
-        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+        <div className={`transition-all duration-300 ease-in-out w-full sm:w-auto ${
+          mobileMenuOpen 
+            ? 'flex flex-col gap-3 opacity-100 max-h-[500px] visible' 
+            : 'hidden sm:flex sm:flex-row sm:items-center gap-3 opacity-0 sm:opacity-100 max-h-0 sm:max-h-none overflow-hidden sm:overflow-visible'
+        }`}>
           {/* User Badge */}
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold ${
-            theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-250 text-slate-650'
+          <div className={`h-9 flex items-center justify-between sm:justify-start gap-2 px-3 rounded-lg border text-xs font-semibold ${
+            theme === 'dark' ? 'bg-slate-900 border-slate-800 text-slate-200' : 'bg-slate-100/70 border-slate-200 text-slate-700'
           }`}>
-            <User className="h-4 w-4 text-cyan-500" />
-            <span>{user?.name}</span>
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-cyan-500" />
+              <span>{user?.name}</span>
+            </div>
             <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase ${
-              user?.role === 'admin' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-slate-800 text-slate-400'
+              user?.role === 'admin' 
+                ? (theme === 'dark' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-cyan-50 text-cyan-600 border border-cyan-200') 
+                : (theme === 'dark' ? 'bg-slate-800 border border-slate-700 text-slate-400' : 'bg-slate-200/60 border border-slate-300 text-slate-600')
             }`}>
               {user?.role}
             </span>
           </div>
 
           {/* Sync badge */}
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold ${
-            theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-250 text-slate-650'
+          <div className={`h-9 flex items-center justify-between sm:justify-start gap-2 px-3 rounded-lg border text-xs font-semibold ${
+            theme === 'dark' ? 'bg-slate-900 border-slate-800 text-slate-200' : 'bg-slate-100/70 border-slate-200 text-slate-700'
           }`}>
-            <span className="relative flex h-2 w-2">
-              <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 bg-emerald-400`}></span>
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${
-                wsStatus === 'CONNECTED' ? 'bg-emerald-500' : wsStatus === 'CONNECTING' ? 'bg-amber-500' : 'bg-rose-500'
-              }`}></span>
-            </span>
-            <span className="text-[10px]">
-              {wsStatus === 'CONNECTED' ? 'Live Synced' : wsStatus === 'CONNECTING' ? 'Syncing...' : 'Disconnected'}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 bg-emerald-400`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                  wsStatus === 'CONNECTED' ? 'bg-emerald-500' : wsStatus === 'CONNECTING' ? 'bg-amber-500' : 'bg-rose-500'
+                }`}></span>
+              </span>
+              <span className="text-[10px]">
+                {wsStatus === 'CONNECTED' ? 'Live Synced' : wsStatus === 'CONNECTING' ? 'Syncing...' : 'Disconnected'}
+              </span>
+            </div>
           </div>
 
-          {/* Theme switcher */}
-          <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className={`p-2 rounded-lg border transition-colors flex items-center justify-center shadow-sm ${
-              theme === 'dark' ? 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-amber-400' : 'bg-slate-100 hover:bg-slate-200 border-slate-250 text-indigo-600'
-            }`}
-          >
-            {theme === 'dark' ? <Sun className="h-4.5 w-4.5" /> : <Moon className="h-4.5 w-4.5" />}
-          </button>
+          {/* Theme switcher and Log out Actions */}
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {/* Theme switcher */}
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className={`h-9 w-9 shrink-0 flex items-center justify-center rounded-lg border transition-colors shadow-sm ${
+                theme === 'dark' ? 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-amber-400' : 'bg-slate-100/70 hover:bg-slate-200 border-slate-200 text-indigo-600'
+              }`}
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
 
-          {/* Log out action */}
-          <button
-            onClick={handleLogout}
-            className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
-            title="Log Out Session"
-          >
-            <LogOut className="h-4 w-4" />
-            <span>Sign Out</span>
-          </button>
+            {/* Log out action */}
+            <button
+              onClick={handleLogout}
+              className={`h-9 px-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer flex-1 sm:flex-initial border ${
+                theme === 'dark' ? 'border-rose-700/30' : 'border-rose-500/20'
+              }`}
+              title="Log Out Session"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sign Out</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -492,11 +531,6 @@ export default function App() {
             monitoringError={monitoringError}
             targetUrl={targetUrl}
             onToggleMonitoring={handleToggleMonitoring}
-            theme={theme}
-          />
-          
-          <RateLimitWidget 
-            rateLimits={rateLimits}
             theme={theme}
           />
         </div>
@@ -530,6 +564,9 @@ export default function App() {
             logFilter={logFilter}
             onLogFilterChange={handleLogFilterChange}
             theme={theme}
+            logPage={logPage}
+            logTotal={logTotal}
+            onLogPageChange={handleLogPageChange}
           />
         </div>
 
