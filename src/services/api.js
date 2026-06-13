@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 // Dynamically use proxy target or direct host fallback
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const API_BASE_URL = isLocalhost ? '' : (import.meta.env.VITE_API_BASE_URL || '');
 
 const api = axios.create({
   baseURL: API_BASE_URL,

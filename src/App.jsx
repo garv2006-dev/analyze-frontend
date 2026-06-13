@@ -183,7 +183,8 @@ export default function App() {
     const connectWS = () => {
       setWsStatus('CONNECTING');
       let wsUrl;
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const apiBaseUrl = isLocalhost ? '' : import.meta.env.VITE_API_BASE_URL;
       if (apiBaseUrl) {
         try {
           const urlObj = new URL(apiBaseUrl);
@@ -192,12 +193,12 @@ export default function App() {
         } catch (e) {
           console.error("Invalid VITE_API_BASE_URL schema:", e);
           const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-          const host = window.location.hostname === 'localhost' ? 'localhost:5000' : window.location.host;
+          const host = isLocalhost ? 'localhost:5000' : window.location.host;
           wsUrl = `${protocol}//${host}/api/ws`;
         }
       } else {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.hostname === 'localhost' ? 'localhost:5000' : window.location.host;
+        const host = isLocalhost ? 'localhost:5000' : window.location.host;
         wsUrl = `${protocol}//${host}/api/ws`;
       }
 
