@@ -91,3 +91,5 @@ test-results/
 # Mac files
 .AppleDouble
 .LSOverride
+
+.env.production

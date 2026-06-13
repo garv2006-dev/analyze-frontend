@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Dynamically use proxy target or direct host fallback
-const API_BASE_URL = ''; // Empty string lets Vite config proxy serve it in development
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

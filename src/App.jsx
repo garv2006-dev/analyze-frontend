@@ -182,9 +182,24 @@ export default function App() {
 
     const connectWS = () => {
       setWsStatus('CONNECTING');
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.hostname === 'localhost' ? 'localhost:5000' : window.location.host;
-      const wsUrl = `${protocol}//${host}/api/ws`;
+      let wsUrl;
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+      if (apiBaseUrl) {
+        try {
+          const urlObj = new URL(apiBaseUrl);
+          const wsProtocol = urlObj.protocol === 'https:' ? 'wss:' : 'ws:';
+          wsUrl = `${wsProtocol}//${urlObj.host}/api/ws`;
+        } catch (e) {
+          console.error("Invalid VITE_API_BASE_URL schema:", e);
+          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          const host = window.location.hostname === 'localhost' ? 'localhost:5000' : window.location.host;
+          wsUrl = `${protocol}//${host}/api/ws`;
+        }
+      } else {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.hostname === 'localhost' ? 'localhost:5000' : window.location.host;
+        wsUrl = `${protocol}//${host}/api/ws`;
+      }
 
       socket = new WebSocket(wsUrl);
 
