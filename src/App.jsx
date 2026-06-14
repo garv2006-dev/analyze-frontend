@@ -13,7 +13,6 @@ import AuthShell from './components/AuthShell';
 import TargetUrlManager from './components/TargetUrlManager';
 import SchedulerController from './components/SchedulerController';
 import ScreenshotComparator from './components/ScreenshotComparator';
-import CaptureGallery from './components/CaptureGallery';
 import LogList from './components/LogList';
 import ImagePreviewModal from './components/ImagePreviewModal';
 
@@ -563,13 +562,7 @@ export default function App() {
             theme={theme}
           />
           
-          <CaptureGallery 
-            predictions={predictions}
-            activePrediction={activePrediction}
-            onSelectPrediction={setActivePrediction}
-            theme={theme}
-          />
-          
+
           <LogList 
             predictions={predictions} 
             onPreviewImage={openPreview}
