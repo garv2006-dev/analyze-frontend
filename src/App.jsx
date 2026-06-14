@@ -5,7 +5,7 @@ import {
 import { 
   registerUser, loginUser, getMe, getTargetUrl, createTargetUrl, 
   deleteTargetUrl, getMonitoringStatus, updateMonitoringStatus, 
-  getPredictions, getAuditLogs, getRateLimitStats
+  getPredictions, getRateLimitStats
 } from './services/api';
 
 // Import newly created modular subcomponents
@@ -14,7 +14,6 @@ import TargetUrlManager from './components/TargetUrlManager';
 import SchedulerController from './components/SchedulerController';
 import ScreenshotComparator from './components/ScreenshotComparator';
 import CaptureGallery from './components/CaptureGallery';
-import LogsPanel from './components/LogsPanel';
 
 export default function App() {
   // Authentication States
@@ -46,13 +45,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState('original'); // 'original' | 'highlighted'
   const [isTriggering, setIsTriggering] = useState(false);
 
-  // Auditing Logs States
-  const [auditLogs, setAuditLogs] = useState([]);
-  const [logsLoading, setLogsLoading] = useState(false);
-  const [logSearch, setLogSearch] = useState('');
-  const [logFilter, setLogFilter] = useState('ALL');
-  const [logPage, setLogPage] = useState(1);
-  const [logTotal, setLogTotal] = useState(0);
+
 
   // Rate Limits States
   const [rateLimits, setRateLimits] = useState(null);
@@ -100,7 +93,6 @@ export default function App() {
         // Parallel data loading
         loadPredictions(1);
         loadMonitoringStatus();
-        loadAuditLogs(1);
         loadRateLimitStats();
       }
     } catch (err) {
@@ -144,22 +136,7 @@ export default function App() {
     }
   };
 
-  // Load audit logs
-  const loadAuditLogs = async (page = 1, eventFilter = logFilter, searchVal = logSearch) => {
-    try {
-      setLogsLoading(true);
-      const res = await getAuditLogs(page, 15, eventFilter, searchVal);
-      if (res.success) {
-        setAuditLogs(res.data);
-        setLogPage(page);
-        setLogTotal(res.total || 0);
-      }
-    } catch (err) {
-      console.error("Failed to load audit logs:", err);
-    } finally {
-      setLogsLoading(false);
-    }
-  };
+
 
   // Load rate limits
   const loadRateLimitStats = async () => {
@@ -215,7 +192,6 @@ export default function App() {
           if (payload.success && payload.type === 'NEW_PREDICTION' && payload.user_id === user?.id) {
             console.log("📡 Real-time update received:", payload.data);
             loadPredictions(1);
-            loadAuditLogs(1);
             loadRateLimitStats();
             loadMonitoringStatus();
             setActivePrediction(payload.data);
@@ -296,7 +272,6 @@ export default function App() {
     setUser(null);
     setTargetUrl(null);
     setPredictions([]);
-    setAuditLogs([]);
     setRateLimits(null);
   };
 
@@ -309,7 +284,6 @@ export default function App() {
       const res = await createTargetUrl(url, intervalMinutes);
       if (res.success) {
         setTargetUrl(res.data);
-        loadAuditLogs(1);
       }
     } catch (err) {
       setUrlError(err.message);
@@ -331,7 +305,6 @@ export default function App() {
         setMonitoringStatus('inactive');
         setPredictions([]);
         setActivePrediction(null);
-        loadAuditLogs(1);
       }
     } catch (err) {
       setUrlError(err.message);
@@ -349,7 +322,6 @@ export default function App() {
       const res = await updateMonitoringStatus(statusToSet);
       if (res.success) {
         setMonitoringStatus(res.status);
-        loadAuditLogs(1);
       }
     } catch (err) {
       setMonitoringError(err.message);
@@ -369,7 +341,6 @@ export default function App() {
       const res = await triggerAnalysis();
       if (res.success && res.data) {
         loadPredictions(1);
-        loadAuditLogs(1);
         loadRateLimitStats();
         setActivePrediction(res.data);
       }
@@ -380,19 +351,7 @@ export default function App() {
     }
   };
 
-  const handleLogFilterChange = (filter) => {
-    setLogFilter(filter);
-    loadAuditLogs(1, filter, logSearch);
-  };
 
-  const handleLogSearchChange = (val) => {
-    setLogSearch(val);
-    loadAuditLogs(1, logFilter, val);
-  };
-
-  const handleLogPageChange = (page) => {
-    loadAuditLogs(page, logFilter, logSearch);
-  };
 
   // Loader screen on bootstrap
   if (predictionsLoading && !isAuthenticated) {
@@ -572,18 +531,7 @@ export default function App() {
             theme={theme}
           />
           
-          <LogsPanel 
-            auditLogs={auditLogs}
-            logsLoading={logsLoading}
-            logSearch={logSearch}
-            onLogSearchChange={handleLogSearchChange}
-            logFilter={logFilter}
-            onLogFilterChange={handleLogFilterChange}
-            theme={theme}
-            logPage={logPage}
-            logTotal={logTotal}
-            onLogPageChange={handleLogPageChange}
-          />
+
         </div>
 
       </main>
