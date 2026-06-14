@@ -227,12 +227,17 @@ export default function App() {
       socket.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
-          if (payload.success && payload.type === 'NEW_PREDICTION' && payload.user_id === user?.id) {
-            console.log("📡 Real-time update received:", payload.data);
-            loadPredictions(1);
-            loadRateLimitStats();
-            loadMonitoringStatus();
-            setActivePrediction(payload.data);
+          if (payload.success && payload.user_id === user?.id) {
+            if (payload.type === 'NEW_PREDICTION') {
+              console.log("📡 Real-time update received:", payload.data);
+              loadPredictions(1);
+              loadRateLimitStats();
+              loadMonitoringStatus();
+              setActivePrediction(payload.data);
+            } else if (payload.type === 'MONITORING_STATUS_CHANGED') {
+              console.log("📡 Monitoring status updated via WS:", payload.status);
+              setMonitoringStatus(payload.status);
+            }
           }
         } catch (err) {
           console.error("WS parse error:", err);

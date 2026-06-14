@@ -56,14 +56,9 @@ export default function TargetUrlManager({ targetUrl, onSaveUrl, onDeleteUrl, ur
                 theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-350 text-slate-900'
               }`}
             >
-              <option value={1}>Every 1 Minute</option>
               <option value={2}>Every 2 Minutes</option>
-              <option value={3}>Every 3 Minutes</option>
               <option value={5}>Every 5 Minutes</option>
               <option value={10}>Every 10 Minutes</option>
-              <option value={15}>Every 15 Minutes</option>
-              <option value={30}>Every 30 Minutes</option>
-              <option value={60}>Every 60 Minutes (1 Hour)</option>
             </select>
           </div>
 
