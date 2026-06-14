@@ -5,7 +5,7 @@ import {
 import { 
   registerUser, loginUser, getMe, getTargetUrl, createTargetUrl, 
   deleteTargetUrl, getMonitoringStatus, updateMonitoringStatus, 
-  getPredictions, getRateLimitStats
+  getPredictions, getRateLimitStats, deletePrediction, bulkDeletePredictions
 } from './services/api';
 
 // Import newly created modular subcomponents
@@ -14,6 +14,8 @@ import TargetUrlManager from './components/TargetUrlManager';
 import SchedulerController from './components/SchedulerController';
 import ScreenshotComparator from './components/ScreenshotComparator';
 import CaptureGallery from './components/CaptureGallery';
+import LogList from './components/LogList';
+import ImagePreviewModal from './components/ImagePreviewModal';
 
 export default function App() {
   // Authentication States
@@ -44,6 +46,10 @@ export default function App() {
   const [activePrediction, setActivePrediction] = useState(null);
   const [viewMode, setViewMode] = useState('original'); // 'original' | 'highlighted'
   const [isTriggering, setIsTriggering] = useState(false);
+  const [totalPredictions, setTotalPredictions] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
 
 
 
@@ -110,6 +116,8 @@ export default function App() {
       if (res.success) {
         setPredictions(res.data);
         setCurrentPage(page);
+        setTotalPredictions(res.total || 0);
+        setTotalPages(Math.ceil((res.total || 0) / 10) || 1);
         
         // Auto-select latest prediction if none selected
         if (res.data.length > 0 && !activePrediction) {
@@ -119,6 +127,37 @@ export default function App() {
     } catch (err) {
       setPredictionsError(err.message);
     }
+  };
+
+  const handleDeletePrediction = async (id) => {
+    try {
+      const res = await deletePrediction(id);
+      if (res.success) {
+        loadPredictions(currentPage);
+        if (activePrediction?.id === id) {
+          setActivePrediction(null);
+        }
+      }
+    } catch (err) {
+      setPredictionsError(err.message);
+    }
+  };
+
+  const handleBulkDelete = async (ids = [], deleteAll = false) => {
+    try {
+      const res = await bulkDeletePredictions(ids, deleteAll);
+      if (res.success) {
+        loadPredictions(1);
+        setActivePrediction(null);
+      }
+    } catch (err) {
+      setPredictionsError(err.message);
+    }
+  };
+
+  const openPreview = (url) => {
+    setPreviewUrl(url);
+    setPreviewOpen(true);
   };
 
   // Load monitoring scheduler configuration
@@ -531,10 +570,26 @@ export default function App() {
             theme={theme}
           />
           
-
+          <LogList 
+            predictions={predictions} 
+            onPreviewImage={openPreview}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={loadPredictions}
+            onDeletePrediction={handleDeletePrediction}
+            onBulkDelete={handleBulkDelete}
+            totalCount={totalPredictions}
+            theme={theme}
+          />
         </div>
 
       </main>
+
+      <ImagePreviewModal 
+        isOpen={previewOpen}
+        imageUrl={previewUrl}
+        onClose={() => setPreviewOpen(false)}
+      />
     </div>
   );
 }
