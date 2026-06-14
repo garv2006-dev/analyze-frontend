@@ -26,7 +26,7 @@ export default function SchedulerController({
         }`}>
           <div className="flex justify-between items-center text-[10px]">
             <span className="text-slate-500">Allowed Capture Window:</span>
-            <span className="font-bold text-cyan-500">09:15 AM - 03:15 PM</span>
+            <span className="font-bold text-cyan-500">09:15 AM - 03:15 PM, Mon - Fri</span>
           </div>
           <div className="flex justify-between items-center text-[10px]">
             <span className="text-slate-500">Server Clock:</span>
@@ -40,8 +40,8 @@ export default function SchedulerController({
 
         {/* Warnings if outside hours */}
         {!isWithinHours && (
-          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 text-[10px] leading-relaxed font-semibold">
-            ⚠️ **System Bypassed**: Active capture schedules are paused because the clock is currently outside 09:15 AM - 03:15 PM. You can click to view past runs history below.
+          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-450 text-[10px] leading-relaxed font-semibold">
+            ⚠️ **System Bypassed**: Active capture schedules are paused because the clock is currently outside 09:15 AM - 03:15 PM (Mon - Fri). You can click to view past runs history below.
           </div>
         )}
 
